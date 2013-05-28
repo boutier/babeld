@@ -253,6 +253,18 @@ This specifies the name of the file to which
 .B babeld
 writes out its process id, and is equivalent to the command-line option
 .BR \-I .
+.TP
+.BI first-table-number " table"
+Set the index of the first table to use.  It is useful if the kernel uses
+multiple routing tables for source-specific rules implementation.  It must be
+small einough to handle all tables. By default,
+.B babeld
+uses 10 tables.
+.TP
+.BI first-rule-priority " priority"
+Set the first table's rule priority to use. It must be small einough to handle
+all priorities. See
+.BR first-table-number .
 .SS Interface configuration
 An interface is configured by a line with the following format:
 .IP
