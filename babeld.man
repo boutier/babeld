@@ -265,6 +265,13 @@ uses 10 tables.
 Set the first table's rule priority to use. It must be small einough to handle
 all priorities. See
 .BR first-table-number .
+.TP
+.BR announce-with-default-source-prefix " {" true | false }
+With that option, babeld will re-announce all routes as not source-specific. In
+order to avoid rooting loops, all non-source-specific routes will be
+discarded. For example, if a route (d,s) is installed, (d,0) will be announced,
+and (d,0) will be discarded. The default is
+.BR false .
 .SS Interface configuration
 An interface is configured by a line with the following format:
 .IP

@@ -884,12 +884,43 @@ update_route(const unsigned char *id,
     if(src_plen != 0 && is_v4 != v4mapped(src_prefix))
         return NULL;
 
-
     add_metric = input_filter(id, prefix, plen, src_prefix, src_plen,
                               neigh->address, neigh->ifp->ifindex,
                               NULL);
     if(add_metric >= INFINITY)
         return NULL;
+
+    if(allow_generic_redistribution) {
+        struct route_stream *stream = NULL;
+        struct babel_route *rt = NULL;
+        stream = route_stream(1);
+        if(src_plen == 0) {
+            /* reject route if a specific one exists for that destination */
+            while(1) {
+                rt = route_stream_next(stream);
+                if(rt == NULL) break;
+                if(rt->src->src_plen != 0 &&
+                   prefix_cmp(prefix, plen, rt->src->prefix, rt->src->plen)
+                   == PST_EQUALS) {
+                    route_stream_done(stream);
+                    return NULL;
+                }
+            }
+        } else {
+            /* reject/uninstall non-specific routes installed for that dest. */
+            while(1) {
+                rt = route_stream_next(stream);
+                if(rt == NULL) break;
+                if(rt->src->src_plen == 0 &&
+                   prefix_cmp(prefix, plen, rt->src->prefix, rt->src->plen)
+                   == PST_EQUALS) {
+                    route_stream_done(stream);
+                    uninstall_route(rt);
+                }
+            }
+        }
+        route_stream_done(stream);
+    }
 
     route = find_route(prefix, plen, src_prefix, src_plen, neigh, nexthop);
 
