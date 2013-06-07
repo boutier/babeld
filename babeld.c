@@ -79,6 +79,7 @@ const unsigned char ones[16] =
 
 int protocol_port;
 unsigned char protocol_group[16];
+char allow_generic_redistribution = 0;
 int protocol_socket = -1;
 int kernel_socket = -1;
 static int kernel_routes_changed = 0;

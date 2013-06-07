@@ -1155,6 +1155,49 @@ really_send_update(struct interface *ifp,
     if(!if_up(ifp))
         return;
 
+    v4 = plen >= 96 && v4mapped(prefix);
+
+    if(src_plen != 0 && allow_generic_redistribution) {
+        struct babel_route *rt;
+        struct route_stream *stream;
+        int has_lowest_metric = 1;
+        enum prefix_status st;
+        /* check if the route to send is the one with the lowest metric for
+           the destination prefix/plen. */
+        stream = route_stream(1);
+        if(!stream) {
+            fprintf(stderr, "Couldn't allocate route stream.\n");
+            goto no_generic_announce;
+        }
+        while(1) {
+            rt = route_stream_next(stream);
+            if(rt == NULL) break;
+            if(v4mapped(rt->src->prefix) != v4) continue;
+            st = prefix_cmp(rt->src->prefix, rt->src->plen,
+                            prefix, plen);
+            if(st != PST_EQUALS)
+                continue;
+            st = prefix_cmp(rt->src->src_prefix, rt->src->src_plen,
+                            src_prefix, src_plen);
+            if(st != PST_EQUALS &&
+               route_metric(rt) < INFINITY &&
+               (route_metric(rt) > metric
+                || (route_metric(rt) == metric &&
+                    memcmp(src_prefix, rt->src->src_prefix, 16) < 0)) &&
+               output_filter(rt->src->id, rt->src->prefix, rt->src->plen,
+                             rt->src->src_prefix, rt->src->src_plen,
+                             rt->neigh->ifp->ifindex, NULL) < INFINITY) {
+                has_lowest_metric = 0;
+                break;
+            }
+        }
+        route_stream_done(stream);
+        if(has_lowest_metric)
+            really_send_update(ifp, id, prefix, plen, zeroes, 0, seqno,
+                               metric, channels, channels_len);
+    }
+ no_generic_announce:
+
     add_metric = output_filter(id, prefix, plen, src_prefix,
                                src_plen, ifp->ifindex, NULL);
     if(add_metric >= INFINITY)
@@ -1163,8 +1206,6 @@ really_send_update(struct interface *ifp,
     metric = MIN(metric + add_metric, INFINITY);
     /* Worst case */
     ensure_space(ifp, 20 + 12 + 28 + 18);
-
-    v4 = plen >= 96 && v4mapped(prefix);
 
     if(v4) {
         if(!ifp->ipv4)

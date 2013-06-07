@@ -773,6 +773,12 @@ parse_option(int c, gnc_t gnc, void *closure, char *token)
         if(c < -1 || n <= 0 || n + SRC_TABLE_NUM >= 32765)
             goto error;
         src_table_prio = n;
+    } else if(strcmp(token, "announce-with-default-source-prefix") == 0) {
+        int b;
+        c = getbool(c, &b, gnc, closure);
+        if(c < -1)
+            goto error;
+        allow_generic_redistribution = (b == CONFIG_YES);
     } else {
         goto error;
     }
