@@ -125,7 +125,7 @@ main(int argc, char **argv)
     change_smoothing_half_life(4);
 
     while(1) {
-        opt = getopt(argc, argv, "m:p:h:H:i:k:A:sruS:d:g:lwz:M:t:T:c:C:DL:I:");
+        opt = getopt(argc, argv, "m:p:h:H:i:k:A:sruS:d:g:lwz:M:t:T:c:C:DL:I:v");
         if(opt < 0)
             break;
 
@@ -259,6 +259,10 @@ main(int argc, char **argv)
             break;
         case 'I':
             pidfile = optarg;
+            break;
+        case 'v':
+            printf(BABEL_VERSION"\n");
+            exit(0);
             break;
         default:
             goto usage;

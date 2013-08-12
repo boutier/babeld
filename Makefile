@@ -16,8 +16,18 @@ OBJS = babeld.o net.o kernel.o util.o interface.o source.o neighbour.o \
        route.o xroute.o message.o resend.o configuration.o local.o \
        disambiguation.o
 
-babeld: $(OBJS)
+babeld: version.h $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o babeld $(OBJS) $(LDLIBS)
+
+version.h: CHANGES
+	@if [ -d .git ]; then						\
+	    x='#define BABEL_VERSION "';				\
+	    x="$$x`awk '/: babeld-/{print $$4; exit 0}' < CHANGES`--";	\
+	    x="$$x`git log --pretty=format:'%h' -n 1`";			\
+	    x="$$x\"";							\
+	    echo "$$x > version.h";					\
+	    echo $$x > version.h;					\
+	fi
 
 .SUFFIXES: .man .html
 
@@ -47,7 +57,13 @@ uninstall:
 	-rm -f $(TARGET)$(PREFIX)/bin/babeld
 	-rm -f $(TARGET)$(PREFIX)/man/man8/babeld.8
 
-clean:
+clean: clean_version
 	-rm -f babeld babeld.html *.o *~ core TAGS gmon.out
+
+clean_version:
+	@-if [ -d .git ]; then		\
+	    echo 'rm -f version.h';	\
+	    rm -f version.h;		\
+	fi
 
 kernel.o: kernel_netlink.c kernel_socket.c
