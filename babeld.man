@@ -541,6 +541,25 @@ If your want to redistribute kernel routes as source-specific to the network,
 with the 2001:DB8:0:1::/64 prefix:
 .IP
 redistribute src-prefix 2001:DB8:0:1::/64
+.PP
+For compatibility with non-source-specific babeld, you may want to redistribute
+all your routing table as non-source-specific (see the options details for
+explanation).  In that case, use:
+.IP
+announce-with-default-source-prefix true
+.PP
+If you receive non-specific routes from another babeld on interface eth0, and
+you want to have them as source-specific, you can use input filter (2).
+However, be worry to not send specific updates through that same interface: this
+could make persistant routing loops (3).  Also note that addresses (/128) should
+be accepted wihout source-prefix (1).  This option is not safe, so be worry when
+using it.
+.IP
+in if eth0 ip ::/0 ge 128 allow                            (1)
+.br
+in if eth0 src-prefix 2001:DB8:0:2::/64                    (2)
+.br
+out if eth0 src-ip 2001:DB8:0:2::/64 src-eq 64 deny        (3)
 .SH FILES
 .TP
 .B /etc/babeld.conf
