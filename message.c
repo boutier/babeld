@@ -746,6 +746,12 @@ parse_packet(const unsigned char *from, struct interface *ifp,
     fail:
         fprintf(stderr, "Couldn't parse packet (%d, %d) from %s on %s.\n",
                 message[0], message[1], format_address(from), ifp->name);
+        if(UNLIKELY(debug >= 2)) {
+            int i;
+            for(i = 0; i < len + 2; i++)
+                debugf("%02x", message[i]);
+            debugf("\n");
+        }
         goto done;
     }
 
