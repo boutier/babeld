@@ -487,6 +487,12 @@ For a redistribute filter, redistribute this route with metric
 For an input or redistribute filter, allow this route changing his source prefix
 by
 .IR prefix .
+Do not use this option for input filter unless you know what you are doing, as
+it can cause persistent routing loops.  This option should be use to
+redistribute routes with a specified source prefix, and can be used to accept
+incomming routes from given interfaces with a specified source prefix.  In this
+later case, it's important to add an output filter through these interfaces in
+order to prevent the export of the specific route.
 .PP
 If
 .I action

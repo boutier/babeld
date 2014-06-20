@@ -861,6 +861,7 @@ update_route(const unsigned char *id,
 {
     struct babel_route *route;
     struct source *src;
+    struct filter_result filter_result = {0};
     int metric, feasible;
     int add_metric;
     int hold_time = MAX((4 * interval) / 100 + interval / 50, 15);
@@ -886,9 +887,14 @@ update_route(const unsigned char *id,
 
     add_metric = input_filter(id, prefix, plen, src_prefix, src_plen,
                               neigh->address, neigh->ifp->ifindex,
-                              NULL);
+                              &filter_result);
     if(add_metric >= INFINITY)
         return NULL;
+
+    if(filter_result.src_prefix) {
+        src_prefix = filter_result.src_prefix;
+        src_plen = filter_result.src_plen;
+    }
 
     if(allow_generic_redistribution) {
         struct route_stream *stream = NULL;
