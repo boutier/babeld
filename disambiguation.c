@@ -45,7 +45,7 @@ struct zone {
 
 /* Given (d,s), search min { (d1,s1) | s == s1 && d < d1 }. */
 static struct babel_route *
-get_lowest_dst(struct zone *zone)
+get_lowest_dst(const struct zone *zone)
 {
     return find_min_iroute(zone->dst_prefix, zone->dst_plen,
                            zone->src_prefix, zone->src_plen,
@@ -56,7 +56,7 @@ get_lowest_dst(struct zone *zone)
    (d2,s2) such that d1 == d, s < s1, d < d2 and s == s2.
    ATTENTION : it doen't return 0 if(d,s) exists ! */
 static int
-has_conflict(struct zone *conflict_zone)
+has_conflict(const struct zone *conflict_zone)
 {
     struct babel_route *rt;
 
@@ -94,7 +94,7 @@ has_conflict(struct zone *conflict_zone)
 /* Given (d,s), return min { (d1,s1) | d == d1 && s <= s1 }, i.e. the route
    which should be use for packets in (d,s). */
 static struct babel_route *
-search_conflict_solution(struct zone *conflict_zone)
+search_conflict_solution(const struct zone *conflict_zone)
 {
     return find_min_iroute(conflict_zone->dst_prefix, conflict_zone->dst_plen,
                            conflict_zone->src_prefix, conflict_zone->src_plen,
@@ -102,7 +102,8 @@ search_conflict_solution(struct zone *conflict_zone)
 }
 
 static int
-add_non_conflicting_route(struct babel_route *route, struct zone *zone)
+add_non_conflicting_route(const struct babel_route *route,
+                          const struct zone *zone)
 {
     int rc;
     if(!has_conflict(zone)) {
@@ -125,12 +126,12 @@ add_non_conflicting_route(struct babel_route *route, struct zone *zone)
 }
 
 static int
-install_conflicting_routes(struct babel_route *route_to_add,
-                           struct babel_route *installed_route)
+install_conflicting_routes(const struct babel_route *route_to_add,
+                           const struct babel_route *installed_route)
 {
     struct zone cz;
     struct source *rt = route_to_add->src, *rt1 = installed_route->src;
-    struct babel_route *solution = NULL;
+    const struct babel_route *solution = NULL;
     enum prefix_status dst_st, src_st;
 
     if(v4mapped(rt->prefix) != v4mapped(rt1->prefix))
@@ -195,7 +196,7 @@ install_conflicting_routes(struct babel_route *route_to_add,
 }
 
 int
-kinstall_route(struct babel_route *route)
+kinstall_route(const struct babel_route *route)
 {
     int rc;
     struct zone zone;
@@ -242,7 +243,8 @@ kinstall_route(struct babel_route *route)
 }
 
 static int
-del_non_conflicting_route(struct babel_route *route, struct zone *zone)
+del_non_conflicting_route(const struct babel_route *route,
+                          const struct zone *zone)
 {
     int rc;
     if(!has_conflict(zone)) {
@@ -265,8 +267,8 @@ del_non_conflicting_route(struct babel_route *route, struct zone *zone)
 }
 
 static int
-uninstall_conflicting_routes(struct babel_route *route_to_del,
-                             struct babel_route *installed_route)
+uninstall_conflicting_routes(const struct babel_route *route_to_del,
+                             const struct babel_route *installed_route)
 {
     struct source *rt = route_to_del->src, *rt1 = installed_route->src;
     struct babel_route *solution = NULL;
@@ -372,7 +374,7 @@ uninstall_conflicting_routes(struct babel_route *route_to_del,
 }
 
 int
-kuninstall_route(struct babel_route *route)
+kuninstall_route(const struct babel_route *route)
 {
     int rc;
     struct zone zone;
@@ -410,8 +412,10 @@ kuninstall_route(struct babel_route *route)
 }
 
 static int
-switch_conflicting_routes(struct babel_route *old, struct babel_route *new,
-                          int new_metric, struct babel_route *installed_route)
+switch_conflicting_routes(const struct babel_route *old,
+                          const struct babel_route *new,
+                          int new_metric,
+                          const struct babel_route *installed_route)
 {
     struct source *rt = old->src, *rt1 = installed_route->src;
     enum prefix_status dst_st, src_st;
@@ -461,7 +465,7 @@ switch_conflicting_routes(struct babel_route *old, struct babel_route *new,
    must be the same. */
 
 int
-kswitch_routes(struct babel_route *old, struct babel_route *new)
+kswitch_routes(const struct babel_route *old, const struct babel_route *new)
 {
     int rc, new_metric = metric_to_kernel(route_metric(new));
     struct babel_route *rt1 = NULL;
@@ -503,7 +507,7 @@ kswitch_routes(struct babel_route *old, struct babel_route *new)
 }
 
 int
-kchange_route_metric(struct babel_route *route,
+kchange_route_metric(const struct babel_route *route,
                      unsigned refmetric, unsigned cost, unsigned add)
 {
     int old_metric = metric_to_kernel(route_metric(route));
