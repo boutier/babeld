@@ -81,6 +81,7 @@ static int dgram_socket = -1;
 
 
 static int find_table(const unsigned char *src, unsigned short src_plen);
+static void get_src_from_table(struct kernel_route *route, int table);
 static void release_tables(void);
 
 
@@ -1128,8 +1129,10 @@ parse_kernel_route_rta(struct rtmsg *rtm, int len, struct kernel_route *route)
 
     int i;
     for(i = 0; i < import_table_count; i++)
-        if(table == import_tables[i])
+        if(table == import_tables[i]) {
+            get_src_from_table(route, table);
             return 0;
+        }
     return -1;
 }
 
@@ -1785,6 +1788,21 @@ find_table(const unsigned char *src, unsigned short src_plen)
         kt = &kernel_tables[i];
     }
     return kt == NULL ? -1 : kt->table;
+}
+
+static void
+get_src_from_table(struct kernel_route *route, int table)
+{
+    int i;
+    for(i = 0; i < SRC_TABLE_NUM; i++) {
+        if(kernel_tables[i].plen != 0 &&
+           kernel_tables[i].table == table) {
+            memcpy(route->src_prefix, kernel_tables[i].src, 16);
+            route->src_plen = kernel_tables[i].plen;
+            return;
+        }
+    }
+    /* TODO: not one of our table. We should check if a rule is attached. */
 }
 
 static void
