@@ -555,6 +555,7 @@ kernel_setup(int setup)
 
         return 1;
     } else {
+        release_tables();
         close(dgram_socket);
         dgram_socket = -1;
 
@@ -913,16 +914,16 @@ kernel_interface_channel(const char *ifname, int ifindex)
 
 int
 kernel_route(int operation, const unsigned char *dest, unsigned short plen,
+             const unsigned char *src, unsigned short src_plen,
              const unsigned char *gate, int ifindex, unsigned int metric,
              const unsigned char *newgate, int newifindex,
              unsigned int newmetric)
 {
-
     union { char raw[1024]; struct nlmsghdr nh; } buf;
     struct rtmsg *rtm;
     struct rtattr *rta;
     int len = sizeof(buf.raw);
-    int rc, ipv4;
+    int rc, ipv4, table;
 
     if(!nl_setup) {
         fprintf(stderr,"kernel_route: netlink not initialized.\n");
@@ -942,14 +943,22 @@ kernel_route(int operation, const unsigned char *dest, unsigned short plen,
         }
     }
 
+    if(src_plen == 0)
+        assert(memcmp(src, zeroes, 16) == 0);
+
+    table = find_table(src, src_plen);
+    if(table < 0)
+        return -1;
+
     /* Check that the protocol family is consistent. */
     if(plen >= 96 && v4mapped(dest)) {
-        if(!v4mapped(gate)) {
+        if(!v4mapped(gate) ||
+           (src_plen > 0 && (!v4mapped(src) || src_plen < 96))) {
             errno = EINVAL;
             return -1;
         }
     } else {
-        if(v4mapped(gate)) {
+        if(v4mapped(gate)|| (src_plen > 0 && v4mapped(src))) {
             errno = EINVAL;
             return -1;
         }
@@ -968,9 +977,11 @@ kernel_route(int operation, const unsigned char *dest, unsigned short plen,
            stick with the naive approach, and hope that the window is
            small enough to be negligible. */
         kernel_route(ROUTE_FLUSH, dest, plen,
+                     src, src_plen,
                      gate, ifindex, metric,
                      NULL, 0, 0);
         rc = kernel_route(ROUTE_ADD, dest, plen,
+                          src, src_plen,
                           newgate, newifindex, newmetric,
                           NULL, 0, 0);
         if(rc < 0) {
@@ -982,11 +993,12 @@ kernel_route(int operation, const unsigned char *dest, unsigned short plen,
         return rc;
     }
 
-    kdebugf("kernel_route: %s %s/%d metric %d dev %d nexthop %s\n",
-           operation == ROUTE_ADD ? "add" :
-           operation == ROUTE_FLUSH ? "flush" : "???",
-           format_address(dest), plen, metric, ifindex,
-           format_address(gate));
+    kdebugf("kernel_route: %s %s from %s "
+            "table %d metric %d dev %d nexthop %s\n",
+            operation == ROUTE_ADD ? "add" :
+            operation == ROUTE_FLUSH ? "flush" : "???",
+            format_prefix(dest, plen), format_prefix(src, src_plen),
+            table, metric, ifindex, format_address(gate));
 
     /* Unreachable default routes cause all sort of weird interactions;
        ignore them. */
@@ -1005,7 +1017,7 @@ kernel_route(int operation, const unsigned char *dest, unsigned short plen,
     rtm = NLMSG_DATA(&buf.nh);
     rtm->rtm_family = ipv4 ? AF_INET : AF_INET6;
     rtm->rtm_dst_len = ipv4 ? plen - 96 : plen;
-    rtm->rtm_table = export_table;
+    rtm->rtm_table = table;
     rtm->rtm_scope = RT_SCOPE_UNIVERSE;
     if(metric < KERNEL_INFINITY)
         rtm->rtm_type = RTN_UNICAST;
