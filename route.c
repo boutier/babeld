@@ -900,8 +900,8 @@ update_route(const unsigned char *id,
                 rt = route_stream_next(stream);
                 if(rt == NULL) break;
                 if(rt->src->src_plen != 0 &&
-                   prefix_cmp(prefix, plen, rt->src->prefix, rt->src->plen)
-                   == PST_EQUALS) {
+                   prefix_cmp(prefix, plen, rt->src->prefix, rt->src->plen) ==
+                   PST_EQUALS) {
                     route_stream_done(stream);
                     return NULL;
                 }
@@ -912,8 +912,8 @@ update_route(const unsigned char *id,
                 rt = route_stream_next(stream);
                 if(rt == NULL) break;
                 if(rt->src->src_plen == 0 &&
-                   prefix_cmp(prefix, plen, rt->src->prefix, rt->src->plen)
-                   == PST_EQUALS) {
+                   prefix_cmp(prefix, plen, rt->src->prefix, rt->src->plen) ==
+                   PST_EQUALS) {
                     uninstall_route(rt);
                     break;
                 }
