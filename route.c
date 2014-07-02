@@ -914,8 +914,8 @@ update_route(const unsigned char *id,
                 if(rt->src->src_plen == 0 &&
                    prefix_cmp(prefix, plen, rt->src->prefix, rt->src->plen)
                    == PST_EQUALS) {
-                    route_stream_done(stream);
                     uninstall_route(rt);
+                    break;
                 }
             }
         }
