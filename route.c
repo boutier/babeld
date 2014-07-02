@@ -427,8 +427,7 @@ find_min_iroute(const unsigned char *dst_prefix, unsigned char dst_plen,
                (prefix_cmp(result->src->src_prefix,
                            result->src->src_plen,
                            routes[i]->src->src_prefix,
-                           routes[i]->src->src_plen)
-                == PST_MORE_SPECIFIC))
+                           routes[i]->src->src_plen) == PST_MORE_SPECIFIC))
                 continue;
 
             result = routes[i];
@@ -452,8 +451,7 @@ find_min_iroute(const unsigned char *dst_prefix, unsigned char dst_plen,
                (prefix_cmp(result->src->prefix,
                            result->src->plen,
                            routes[i]->src->prefix,
-                           routes[i]->src->plen)
-                == PST_MORE_SPECIFIC))
+                           routes[i]->src->plen) == PST_MORE_SPECIFIC))
                 continue;
 
             result = routes[i];
@@ -478,8 +476,7 @@ find_min_iroute(const unsigned char *dst_prefix, unsigned char dst_plen,
                (prefix_cmp(result->src->src_prefix,
                            result->src->src_plen,
                            routes[i]->src->src_prefix,
-                           routes[i]->src->src_plen)
-                == PST_MORE_SPECIFIC))
+                           routes[i]->src->src_plen) == PST_MORE_SPECIFIC))
                 continue;
 
             result = routes[i];
