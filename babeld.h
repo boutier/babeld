@@ -20,8 +20,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "version.h"
-
 #define INFINITY ((unsigned short)(~0))
 
 #ifndef RTPROT_BABEL

@@ -16,8 +16,10 @@ OBJS = babeld.o net.o kernel.o util.o interface.o source.o neighbour.o \
        route.o xroute.o message.o resend.o configuration.o local.o \
        disambiguation.o
 
-babeld: version.h $(OBJS)
+babeld: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o babeld $(OBJS) $(LDLIBS)
+
+babeld.o: version.h
 
 version.h: CHANGES
 	@if [ -d .git ]; then						\

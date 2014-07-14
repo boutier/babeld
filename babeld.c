@@ -52,6 +52,7 @@ THE SOFTWARE.
 #include "resend.h"
 #include "configuration.h"
 #include "local.h"
+#include "version.h"
 
 struct timeval now;
 
