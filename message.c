@@ -654,7 +654,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             unsigned char channels[DIVERSITY_HOPS];
             unsigned short interval, seqno, metric;
             const unsigned char *src_prefix_beginning = NULL;
-            int rc, parsed_len;
+            int rc, parsed_len = 0;
             if(len < 10)
                 goto fail;
             ae = message[2];
@@ -674,7 +674,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
                 goto fail;
 
             parsed_len = 10 + rc;
-            src_prefix_beginning = message + parsed_len + 2;
+            src_prefix_beginning = message + 2 + parsed_len;
 
             rc = network_prefix(ae, src_plen, 0, src_prefix_beginning, NULL,
                                     len - parsed_len, src_prefix);
