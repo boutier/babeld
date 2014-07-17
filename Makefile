@@ -22,14 +22,14 @@ babeld: $(OBJS)
 babeld.o: version.h
 
 version.h: CHANGES
-	@if [ -d .git ]; then						\
-	    x='#define BABEL_VERSION "';				\
-	    x="$$x`awk '/: babeld-/{print $$4; exit 0}' < CHANGES`--";	\
-	    x="$$x`git log --pretty=format:'%h' -n 1`";			\
-	    x="$$x\"";							\
-	    echo "$$x > version.h";					\
-	    echo $$x > version.h;					\
-	fi
+	@x='#define BABEL_VERSION "';					\
+	x="$$x`awk '/: babeld-/{print $$4; exit 0}' < CHANGES`";	\
+	if [ -d .git ]; then						\
+	    x="$$x--`git log --pretty=format:'%h' -n 1`";		\
+	fi;								\
+	x="$$x\"";							\
+	echo "$$x > version.h";						\
+	echo $$x > version.h;						\
 
 .SUFFIXES: .man .html
 
@@ -63,9 +63,6 @@ clean: clean_version
 	-rm -f babeld babeld.html *.o *~ core TAGS gmon.out
 
 clean_version:
-	@-if [ -d .git ]; then		\
-	    echo 'rm -f version.h';	\
-	    rm -f version.h;		\
-	fi
+	rm -f version.h;
 
 kernel.o: kernel_netlink.c kernel_socket.c
