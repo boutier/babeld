@@ -1073,11 +1073,14 @@ static void
 really_send_update(struct interface *ifp,
                    const unsigned char *id,
                    const unsigned char *prefix, unsigned char plen,
+                   const unsigned char *src_prefix, unsigned char src_plen,
                    unsigned short seqno, unsigned short metric,
                    unsigned char *channels, int channels_len)
 {
     int add_metric, v4, real_plen, omit = 0;
     const unsigned char *real_prefix;
+    const unsigned char *real_src_prefix = NULL;
+    int real_src_plen = 0;
     unsigned short flags = 0;
     int channels_size;
 
@@ -1089,14 +1092,14 @@ really_send_update(struct interface *ifp,
     if(!if_up(ifp))
         return;
 
-    add_metric = output_filter(id, prefix, plen, zeroes,
-                               0, ifp->ifindex);
+    add_metric = output_filter(id, prefix, plen, src_prefix,
+                               src_plen, ifp->ifindex);
     if(add_metric >= INFINITY)
         return;
 
     metric = MIN(metric + add_metric, INFINITY);
     /* Worst case */
-    ensure_space(ifp, 20 + 12 + 28);
+    ensure_space(ifp, 20 + 12 + 28 + 18);
 
     v4 = plen >= 96 && v4mapped(prefix);
 
@@ -1116,20 +1119,27 @@ really_send_update(struct interface *ifp,
 
         real_prefix = prefix + 12;
         real_plen = plen - 96;
+        if(src_plen != 0 /* it should never be 96 */) {
+            real_src_prefix = src_prefix + 12;
+            real_src_plen = src_plen - 96;
+        }
     } else {
         if(ifp->have_buffered_prefix) {
             while(omit < plen / 8 &&
                   ifp->buffered_prefix[omit] == prefix[omit])
                 omit++;
         }
-        if(!ifp->have_buffered_prefix || plen >= 48)
+        if(src_plen == 0 && (!ifp->have_buffered_prefix || plen >= 48))
             flags |= 0x80;
         real_prefix = prefix;
         real_plen = plen;
+        real_src_prefix = src_prefix;
+        real_src_plen = src_plen;
     }
 
     if(!ifp->have_buffered_id || memcmp(id, ifp->buffered_id, 8) != 0) {
-        if(real_plen == 128 && memcmp(real_prefix + 8, id, 8) == 0) {
+        if(src_plen == 0 && real_plen == 128 &&
+           memcmp(real_prefix + 8, id, 8) == 0) {
             flags |= 0x40;
         } else {
             start_message(ifp, MESSAGE_ROUTER_ID, 10);
@@ -1141,24 +1151,39 @@ really_send_update(struct interface *ifp,
         ifp->have_buffered_id = 1;
     }
 
-    start_message(ifp, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
-                  channels_size);
+    if(src_plen == 0)
+        start_message(ifp, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
+                      channels_size);
+    else
+        start_message(ifp, MESSAGE_UPDATE_SRC_SPECIFIC,
+                      10 + (real_plen + 7) / 8 - omit +
+                      (real_src_plen + 7) / 8 + channels_size);
     accumulate_byte(ifp, v4 ? 1 : 2);
-    accumulate_byte(ifp, flags);
+    if(src_plen != 0)
+        accumulate_byte(ifp, real_src_plen);
+    else
+        accumulate_byte(ifp, flags);
     accumulate_byte(ifp, real_plen);
     accumulate_byte(ifp, omit);
     accumulate_short(ifp, (ifp->update_interval + 5) / 10);
     accumulate_short(ifp, seqno);
     accumulate_short(ifp, metric);
     accumulate_bytes(ifp, real_prefix + omit, (real_plen + 7) / 8 - omit);
+    if(src_plen != 0)
+        accumulate_bytes(ifp, real_src_prefix, (real_src_plen + 7) / 8);
     /* Note that an empty channels TLV is different from no such TLV. */
     if(channels_len >= 0) {
         accumulate_byte(ifp, 2);
         accumulate_byte(ifp, channels_len);
         accumulate_bytes(ifp, channels, channels_len);
     }
-    end_message(ifp, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
-                channels_size);
+    if(src_plen == 0)
+        end_message(ifp, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
+                    channels_size);
+    else
+        end_message(ifp, MESSAGE_UPDATE_SRC_SPECIFIC,
+                    10 + (real_plen + 7) / 8 - omit +
+                    (real_src_plen + 7) / 8 + channels_size);
 
     if(flags & 0x80) {
         memcpy(ifp->buffered_prefix, prefix, 16);
@@ -1271,6 +1296,7 @@ flushupdates(struct interface *ifp)
             if(xroute && (!route || xroute->metric <= kernel_metric)) {
                 really_send_update(ifp, myid,
                                    xroute->prefix, xroute->plen,
+                                   xroute->src_prefix, xroute->src_plen,
                                    myseqno, xroute->metric,
                                    NULL, 0);
                 last_prefix = xroute->prefix;
@@ -1313,8 +1339,8 @@ flushupdates(struct interface *ifp)
 
                 chlen = channels_len(channels);
                 really_send_update(ifp, route->src->id,
-                                   route->src->prefix,
-                                   route->src->plen,
+                                   route->src->prefix, route->src->plen,
+                                   route->src->src_prefix, route->src->src_plen,
                                    seqno, metric,
                                    channels, chlen);
                 update_source(route->src, seqno, metric);
@@ -1324,6 +1350,7 @@ flushupdates(struct interface *ifp)
             /* There's no route for this prefix.  This can happen shortly
                after an xroute has been retracted, so send a retraction. */
                 really_send_update(ifp, myid, b[i].prefix, b[i].plen,
+                                   b[i].src_prefix, b[i].src_plen,
                                    myseqno, INFINITY, NULL, -1);
             }
         }
