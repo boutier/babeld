@@ -565,7 +565,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
                    shortly after we sent a full update. */
                 if(neigh->ifp->last_update_time <
                    now.tv_sec - MAX(neigh->ifp->hello_interval / 100, 1))
-                    send_update(neigh->ifp, 0, NULL, 0, zeroes, 0);
+                    send_update(neigh->ifp, 0, NULL, 0, NULL, 0);
             } else {
                 send_update(neigh->ifp, 0, prefix, plen, zeroes, 0);
             }
