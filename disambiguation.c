@@ -49,7 +49,7 @@ get_lowest_dst(const struct zone *zone)
 {
     return find_min_iroute(zone->dst_prefix, zone->dst_plen,
                            zone->src_prefix, zone->src_plen,
-                           1, 0, 1);
+                           0, 1);
 }
 
 /* return true if the zone (d,s) is a conflict, i.e. if there exists (d1,s1) and
@@ -63,7 +63,7 @@ has_conflict(const struct zone *conflict_zone)
     /* find (d1, s1) such that d == d1 and s < s1. */
     rt = find_min_iroute(conflict_zone->dst_prefix, conflict_zone->dst_plen,
                          conflict_zone->src_prefix, conflict_zone->src_plen,
-                         0, 1, 1);
+                         1, 1);
     if(rt == NULL)
         return 0;
 
@@ -77,7 +77,7 @@ has_conflict(const struct zone *conflict_zone)
     /* find (d1, s1) such that d < d1 and s == s1. */
     rt = find_min_iroute(conflict_zone->dst_prefix, conflict_zone->dst_plen,
                          conflict_zone->src_prefix, conflict_zone->src_plen,
-                         1, 0, 1);
+                         0, 1);
     if(rt == NULL)
         return 0;
 
@@ -98,7 +98,7 @@ search_conflict_solution(const struct zone *conflict_zone)
 {
     return find_min_iroute(conflict_zone->dst_prefix, conflict_zone->dst_plen,
                            conflict_zone->src_prefix, conflict_zone->src_plen,
-                           0, 1, 0);
+                           1, 0);
 }
 
 static int
