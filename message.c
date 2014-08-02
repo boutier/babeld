@@ -569,36 +569,6 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             } else {
                 send_update(neigh->ifp, 0, prefix, plen, zeroes, 0);
             }
-        } else if(type == MESSAGE_REQUEST_SRC_SPECIFIC) {
-            unsigned char prefix[16], plen, ae, src_prefix[16], src_plen;
-            int rc, parsed = 5;
-            if(len < 3) goto fail;
-            ae = message[2];
-            plen = message[3];
-            src_plen = message[4];
-            rc = network_prefix(ae, plen, 0, message + parsed,
-                                NULL, len + 2 - parsed, prefix);
-            if(rc < 0) goto fail;
-            if(ae == 1)
-                plen += 96;
-            parsed += rc;
-            rc = network_prefix(ae, src_plen, 0, message + parsed,
-                                NULL, len + 2 - parsed, src_prefix);
-            if(rc < 0) goto fail;
-            if(ae == 1)
-                src_plen += 96;
-            parsed += rc;
-            if(ae == 0) {
-                debugf("Received source-specific wildcard request "
-                       "from %s on %s -- dropping.\n",
-                       format_address(from), ifp->name);
-            } else {
-                debugf("Received request for(%s from %s) from %s on %s.\n",
-                       format_prefix(prefix, plen),
-                       format_prefix(src_prefix, src_plen),
-                       format_address(from), ifp->name);
-                send_update(neigh->ifp, 0, prefix, plen, src_prefix, src_plen);
-            }
         } else if(type == MESSAGE_MH_REQUEST) {
             unsigned char prefix[16], plen;
             unsigned short seqno;
@@ -735,6 +705,36 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             update_route(router_id, prefix, plen, src_prefix, src_plen,
                          seqno, metric, interval, neigh, nh,
                          channels, channels_len(channels));
+        } else if(type == MESSAGE_REQUEST_SRC_SPECIFIC) {
+            unsigned char prefix[16], plen, ae, src_prefix[16], src_plen;
+            int rc, parsed = 5;
+            if(len < 3) goto fail;
+            ae = message[2];
+            plen = message[3];
+            src_plen = message[4];
+            rc = network_prefix(ae, plen, 0, message + parsed,
+                                NULL, len + 2 - parsed, prefix);
+            if(rc < 0) goto fail;
+            if(ae == 1)
+                plen += 96;
+            parsed += rc;
+            rc = network_prefix(ae, src_plen, 0, message + parsed,
+                                NULL, len + 2 - parsed, src_prefix);
+            if(rc < 0) goto fail;
+            if(ae == 1)
+                src_plen += 96;
+            parsed += rc;
+            if(ae == 0) {
+                debugf("Received source-specific wildcard request "
+                       "from %s on %s -- dropping.\n",
+                       format_address(from), ifp->name);
+            } else {
+                debugf("Received request for(%s from %s) from %s on %s.\n",
+                       format_prefix(prefix, plen),
+                       format_prefix(src_prefix, src_plen),
+                       format_address(from), ifp->name);
+                send_update(neigh->ifp, 0, prefix, plen, src_prefix, src_plen);
+            }
         } else {
             debugf("Received unknown packet type %d from %s on %s.\n",
                    type, format_address(from), ifp->name);
