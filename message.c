@@ -1383,7 +1383,8 @@ schedule_update_flush(struct interface *ifp, int urgent)
 
 static void
 buffer_update(struct interface *ifp,
-              const unsigned char *prefix, unsigned char plen)
+              const unsigned char *prefix, unsigned char plen,
+              const unsigned char *src_prefix, unsigned char src_plen)
 {
     if(ifp->num_buffered_updates > 0 &&
        ifp->num_buffered_updates >= ifp->update_bufsize)
@@ -1415,6 +1416,9 @@ buffer_update(struct interface *ifp,
     memcpy(ifp->buffered_updates[ifp->num_buffered_updates].prefix,
            prefix, 16);
     ifp->buffered_updates[ifp->num_buffered_updates].plen = plen;
+    memcpy(ifp->buffered_updates[ifp->num_buffered_updates].src_prefix,
+           src_prefix, 16);
+    ifp->buffered_updates[ifp->num_buffered_updates].src_plen = src_plen;
     ifp->num_buffered_updates++;
 }
 
@@ -1443,9 +1447,10 @@ send_update(struct interface *ifp, int urgent,
         return;
 
     if(prefix) {
-        debugf("Sending update to %s for %s.\n",
-               ifp->name, format_prefix(prefix, plen));
-        buffer_update(ifp, prefix, plen);
+        debugf("Sending update to %s for %s from %s.\n",
+               ifp->name, format_prefix(prefix, plen),
+               format_prefix(src_prefix, src_plen));
+        buffer_update(ifp, prefix, plen, src_prefix, src_plen);
     } else {
         struct route_stream *routes;
         send_self_update(ifp);
@@ -1456,7 +1461,8 @@ send_update(struct interface *ifp, int urgent,
                 struct babel_route *route = route_stream_next(routes);
                 if(route == NULL)
                     break;
-                buffer_update(ifp, route->src->prefix, route->src->plen);
+                buffer_update(ifp, route->src->prefix, route->src->plen,
+                              route->src->src_prefix, route->src->src_plen);
             }
             route_stream_done(routes);
         } else {
