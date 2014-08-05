@@ -1444,7 +1444,7 @@ filter_addresses(struct nlmsghdr *nh, void *data)
     if(rc < 0)
         return 0;
 
-    if(ll == !IN6_IS_ADDR_LINKLOCAL(&addr))
+    if(data && ll == !IN6_IS_ADDR_LINKLOCAL(&addr))
         return 0;
 
     if(ifindex && ifa->ifa_index != ifindex)
