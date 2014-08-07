@@ -1938,9 +1938,9 @@ send_multihop_request(struct interface *ifp,
     }
     if(is_src_specific) {
         if(v4)
-            accumulate_bytes(ifp, prefix + 12, spb);
+            accumulate_bytes(ifp, src_prefix + 12, spb);
         else
-            accumulate_bytes(ifp, prefix, spb);
+            accumulate_bytes(ifp, src_prefix, spb);
         end_message(ifp, MESSAGE_MH_REQUEST_SRC_SPECIFIC, len);
         return;
     }
