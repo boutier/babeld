@@ -1398,8 +1398,7 @@ flushupdates(struct interface *ifp)
                b[i].plen == last_plen &&
                b[i].src_plen == last_src_plen &&
                memcmp(b[i].prefix, last_prefix, 16) == 0 &&
-               (b[i].src_plen == 0 ||
-                memcmp(b[i].src_prefix, last_src_prefix, 16) == 0))
+               memcmp(b[i].src_prefix, last_src_prefix, 16) == 0)
                 continue;
 
             xroute = find_xroute(b[i].prefix, b[i].plen,
