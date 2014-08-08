@@ -1843,9 +1843,14 @@ send_unicast_request(struct neighbour *neigh,
     /* make sure any buffered updates go out before this request. */
     flushupdates(neigh->ifp);
 
-    debugf("sending unicast request to %s for %s.\n",
-           format_address(neigh->address),
-           prefix ? format_prefix(prefix, plen) : "any");
+    if(!prefix)
+        debugf("sending unicast request to %s for any.\n",
+               format_address(neigh->address));
+    else
+        debugf("sending unicast request to %s for %s from %s.\n",
+               format_address(neigh->address),
+               format_prefix(prefix, plen),
+               format_prefix(src_prefix, src_plen));
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = !prefix ? 2 : 2 + pb;
