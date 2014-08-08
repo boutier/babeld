@@ -24,7 +24,6 @@ THE SOFTWARE.
 #include <time.h>
 #include <string.h>
 #include <stdlib.h>
-#include <assert.h>
 
 #include "babeld.h"
 #include "util.h"
@@ -96,13 +95,14 @@ record_resend(int kind, const unsigned char *prefix, unsigned char plen,
     struct resend *resend;
     unsigned int ifindex = ifp ? ifp->ifindex : 0;
 
-    assert(src_prefix != NULL);
     if((kind == RESEND_REQUEST &&
-        input_filter(NULL, prefix, plen, src_prefix, src_plen, NULL, ifindex, NULL)
-        >= INFINITY) ||
+        input_filter(NULL, prefix, plen, src_prefix, src_plen, NULL, ifindex,
+                     NULL) >=
+        INFINITY) ||
        (kind == RESEND_UPDATE &&
-        output_filter(NULL, prefix, plen, src_prefix, src_plen, ifindex, NULL)
-        >= INFINITY))
+        output_filter(NULL, prefix, plen, src_prefix, src_plen, ifindex,
+                      NULL) >=
+        INFINITY))
         return 0;
 
     if(delay >= 0xFFFF)

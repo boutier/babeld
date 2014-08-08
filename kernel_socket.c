@@ -29,9 +29,6 @@ THE SOFTWARE.
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-#include <assert.h>
-
-
 #include <strings.h>
 #include <netinet/in.h>
 #include <netinet/icmp6.h>

@@ -177,10 +177,9 @@ check_xroutes(int send_updates)
     debugf("\nChecking kernel routes.\n");
 
  again:
-    routes = malloc(maxroutes * sizeof(struct kernel_route));
+    routes = calloc(maxroutes, sizeof(struct kernel_route));
     if(routes == NULL)
         return -1;
-    memset(routes, 0, maxroutes * sizeof(struct kernel_route)); /* calloc ? */
 
     rc = kernel_addresses(NULL, 0, 0, routes, maxroutes);
     if(rc < 0) {
@@ -248,7 +247,6 @@ check_xroutes(int send_updates)
             plen = xroutes[i].plen;
             memcpy(src_prefix, xroutes[i].src_prefix, 16);
             src_plen = xroutes[i].src_plen;
-/* XXX : source-routing ? */
             flush_xroute(&xroutes[i]);
             route = find_best_route(prefix, plen, src_prefix, src_plen, 1,NULL);
             if(route)

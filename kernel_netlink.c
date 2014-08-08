@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-#include <assert.h>
 
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -81,7 +80,6 @@ static int dgram_socket = -1;
 
 
 static int find_table(const unsigned char *src, unsigned short src_plen);
-static void get_src_from_table(struct kernel_route *route, int table);
 static void release_tables(void);
 static int filter_kernel_rules(struct nlmsghdr *nh, void *data);
 static void install_missing_rules(char rule_exists[SRC_TABLE_NUM], int v4);
@@ -950,9 +948,6 @@ kernel_route(int operation, const unsigned char *dest, unsigned short plen,
         }
     }
 
-    if(src_plen == 0)
-        assert(memcmp(src, zeroes, 16) == 0);
-
     table = find_table(src, src_plen);
     if(table < 0)
         return -1;
@@ -1146,10 +1141,8 @@ parse_kernel_route_rta(struct rtmsg *rtm, int len, struct kernel_route *route)
 
     int i;
     for(i = 0; i < import_table_count; i++)
-        if(table == import_tables[i]) {
-            get_src_from_table(route, table);
+        if(table == import_tables[i])
             return 0;
-        }
     return -1;
 }
 
@@ -1594,7 +1587,10 @@ add_rule(int prio, const unsigned char *src_prefix, int src_plen, int table)
     if(is_v4) {
         src_prefix += 12;
         src_plen -= 96;
-        assert(src_plen >= 0);
+        if(src_plen < 0) {
+            errno = EINVAL;
+            return -1;
+        }
     }
 
 #if RTA_ALIGNTO != NLMSG_ALIGNTO
@@ -1640,7 +1636,10 @@ add_rule(int prio, const unsigned char *src_prefix, int src_plen, int table)
         ((char*)current_attribute) + current_attribute->rta_len;
 
     /* send message */
-    assert(message_header->nlmsg_len <= 64);
+    if(message_header->nlmsg_len > 64) {
+        errno = EINVAL;
+        return -1;
+    }
     return netlink_talk(message_header);
 }
 
@@ -1690,7 +1689,10 @@ flush_rule(int prio, int family)
         ((char*)current_attribute) + current_attribute->rta_len;
 
     /* send message */
-    assert(message_header->nlmsg_len <= 64);
+    if(message_header->nlmsg_len > 64) {
+        errno = EINVAL;
+        return -1;
+    }
     return netlink_talk(message_header);
 }
 
@@ -1735,7 +1737,11 @@ insert_table(const unsigned char *src, unsigned short src_plen, int idx)
     int table;
     int rc;
     int i;
-    assert(src_plen != 0 && idx >= 0 && idx < SRC_TABLE_NUM);
+
+    if(idx < 0 || idx >= SRC_TABLE_NUM) {
+        fprintf(stderr, "Incorrect table number %d\n", idx);
+        return NULL;
+    }
 
     if(src_table_used >= SRC_TABLE_NUM) {
         kdebugf("All allowed routing tables are used!\n");
@@ -1835,23 +1841,6 @@ find_table(const unsigned char *src, unsigned short src_plen)
         kt = &kernel_tables[i];
     }
     return kt == NULL ? -1 : kt->table;
-}
-
-static void
-get_src_from_table(struct kernel_route *route, int table)
-{
-    int i;
-    if(table == export_table)
-        return;
-    for(i = 0; i < SRC_TABLE_NUM; i++) {
-        if(kernel_tables[i].plen != 0 &&
-           kernel_tables[i].table == table) {
-            memcpy(route->src_prefix, kernel_tables[i].src, 16);
-            route->src_plen = kernel_tables[i].plen;
-            return;
-        }
-    }
-    /* TODO: not one of our table. We should check if a rule is attached. */
 }
 
 static void

@@ -70,10 +70,10 @@ route_compare(const unsigned char *prefix, unsigned char plen,
     if(plen > route->src->plen)
         return 1;
 
-    if(src_plen == 0 && route->src->src_plen != 0)
-        return -1;
-
-    if(src_plen != 0) {
+    if(src_plen == 0) {
+        if(route->src->src_plen > 0)
+            return -1;
+    } else {
         i = memcmp(src_prefix, route->src->src_prefix, 16);
         if(i != 0)
             return i;
@@ -449,7 +449,6 @@ find_min_iroute(const unsigned char *dst_prefix, unsigned char dst_plen,
 
             result = routes[i];
         }
-
     }
 
     if(result)
