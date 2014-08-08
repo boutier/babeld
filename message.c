@@ -1958,9 +1958,10 @@ send_unicast_multihop_request(struct neighbour *neigh,
     /* Make sure any buffered updates go out before this request. */
     flushupdates(neigh->ifp);
 
-    debugf("Sending multi-hop request to %s for %s (%d hops).\n",
+    debugf("Sending multi-hop request to %s for %s from %s (%d hops).\n",
            format_address(neigh->address),
-           format_prefix(prefix, plen), hop_count);
+           format_prefix(prefix, plen),
+           format_prefix(src_prefix, src_plen), hop_count);
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = 6 + 8 + pb;
