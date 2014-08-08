@@ -735,7 +735,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             if(rc < 0) goto fail;
             if(ae == 1)
                 src_plen += 96;
-            debugf("Received request (%d) for(%s, %s)"
+            debugf("Received request (%d) for (%s, %s)"
                    " from %s on %s (%s, %d).\n",
                    message[6],
                    format_prefix(prefix, plen),
