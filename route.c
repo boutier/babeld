@@ -70,10 +70,10 @@ route_compare(const unsigned char *prefix, unsigned char plen,
     if(plen > route->src->plen)
         return 1;
 
-    if(!src_prefix && route->src->src_plen != 0)
+    if(src_plen == 0 && route->src->src_plen != 0)
         return -1;
 
-    if(src_prefix) {
+    if(src_plen != 0) {
         i = memcmp(src_prefix, route->src->src_prefix, 16);
         if(i != 0)
             return i;
