@@ -499,9 +499,6 @@ switch_routes(struct babel_route *old, struct babel_route *new)
                       metric_to_kernel(route_metric(old)),
                       new->nexthop, new->neigh->ifp->ifindex,
                       metric_to_kernel(route_metric(new)));
-    /* XXX : should the source-ip be subject to changes ? */
-    assert(memcmp(old->src->src_prefix, new->src->src_prefix, 16) == 0
-           && old->src->src_plen == new->src->src_plen);
     if(rc < 0) {
         perror("kernel_route(MODIFY)");
         return;
