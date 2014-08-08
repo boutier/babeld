@@ -1779,7 +1779,6 @@ send_request(struct interface *ifp,
              const unsigned char *src_prefix, unsigned char src_plen)
 {
     int v4, pb, spb, len;
-    int is_src_specific = (prefix && src_plen != 0);
 
     if(ifp == NULL) {
         struct interface *ifp_auxn;
@@ -1806,7 +1805,7 @@ send_request(struct interface *ifp,
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = !prefix ? 2 : 2 + pb;
-    if(is_src_specific) {
+    if(src_plen != 0) {
         spb = v4 ? ((src_plen - 96) + 7) / 8 : (src_plen + 7) / 8;
         len += spb + 1;
         start_message(ifp, MESSAGE_REQUEST_SRC_SPECIFIC, len);
@@ -1815,7 +1814,7 @@ send_request(struct interface *ifp,
     }
     accumulate_byte(ifp, !prefix ? 0 : v4 ? 1 : 2);
     accumulate_byte(ifp, !prefix ? 0 : v4 ? plen - 96 : plen);
-    if(is_src_specific)
+    if(src_plen != 0)
         accumulate_byte(ifp, v4 ? src_plen - 96 : src_plen);
     if(prefix) {
         if(v4)
@@ -1823,7 +1822,7 @@ send_request(struct interface *ifp,
         else
             accumulate_bytes(ifp, prefix, pb);
     }
-    if(is_src_specific) {
+    if(src_plen != 0) {
         if(v4)
             accumulate_bytes(ifp, src_prefix + 12, spb);
         else
@@ -1840,7 +1839,6 @@ send_unicast_request(struct neighbour *neigh,
                      const unsigned char *src_prefix, unsigned char src_plen)
 {
     int rc, v4, pb, spb, len;
-    int is_src_specific = (prefix && src_plen != 0);
 
     /* make sure any buffered updates go out before this request. */
     flushupdates(neigh->ifp);
@@ -1851,7 +1849,7 @@ send_unicast_request(struct neighbour *neigh,
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = !prefix ? 2 : 2 + pb;
-    if(is_src_specific) {
+    if(src_plen != 0) {
         spb = v4 ? ((src_plen - 96) + 7) / 8 : (src_plen + 7) / 8;
         len += spb + 1;
         rc = start_unicast_message(neigh, MESSAGE_REQUEST_SRC_SPECIFIC, len);
@@ -1861,7 +1859,7 @@ send_unicast_request(struct neighbour *neigh,
     if(rc < 0) return;
     accumulate_unicast_byte(neigh, !prefix ? 0 : v4 ? 1 : 2);
     accumulate_unicast_byte(neigh, !prefix ? 0 : v4 ? plen - 96 : plen);
-    if(is_src_specific)
+    if(src_plen != 0)
         accumulate_unicast_byte(neigh, v4 ? src_plen - 96 : src_plen);
     if(prefix) {
         if(v4)
@@ -1869,7 +1867,7 @@ send_unicast_request(struct neighbour *neigh,
         else
             accumulate_unicast_bytes(neigh, prefix, pb);
     }
-    if(is_src_specific) {
+    if(src_plen != 0) {
         if(v4)
             accumulate_unicast_bytes(neigh, src_prefix + 12, spb);
         else
@@ -1888,7 +1886,6 @@ send_multihop_request(struct interface *ifp,
                       unsigned short hop_count)
 {
     int v4, pb, spb, len;
-    int is_src_specific = (src_plen != 0);
 
     /* Make sure any buffered updates go out before this request. */
     flushupdates(ifp);
@@ -1912,7 +1909,7 @@ send_multihop_request(struct interface *ifp,
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = 6 + 8 + pb;
-    if(is_src_specific) {
+    if(src_plen != 0) {
         spb = v4 ? ((src_plen - 96) + 7) / 8 : (src_plen + 7) / 8;
         len += spb;
         start_message(ifp, MESSAGE_MH_REQUEST_SRC_SPECIFIC, len);
@@ -1931,7 +1928,7 @@ send_multihop_request(struct interface *ifp,
         else
             accumulate_bytes(ifp, prefix, pb);
     }
-    if(is_src_specific) {
+    if(src_plen != 0) {
         if(v4)
             accumulate_bytes(ifp, src_prefix + 12, spb);
         else
@@ -1951,7 +1948,6 @@ send_unicast_multihop_request(struct neighbour *neigh,
                               unsigned short hop_count)
 {
     int rc, v4, pb, spb, len;
-    int is_src_specific = (src_plen != 0);
 
     /* Make sure any buffered updates go out before this request. */
     flushupdates(neigh->ifp);
@@ -1962,7 +1958,7 @@ send_unicast_multihop_request(struct neighbour *neigh,
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = 6 + 8 + pb;
-    if(is_src_specific) {
+    if(src_plen != 0) {
         spb = v4 ? ((src_plen - 96) + 7) / 8 : (src_plen + 7) / 8;
         len += spb;
         rc = start_unicast_message(neigh, MESSAGE_MH_REQUEST_SRC_SPECIFIC, len);
@@ -1982,7 +1978,7 @@ send_unicast_multihop_request(struct neighbour *neigh,
         else
             accumulate_unicast_bytes(neigh, prefix, pb);
     }
-    if(is_src_specific) {
+    if(src_plen != 0) {
         if(v4)
             accumulate_unicast_bytes(neigh, src_prefix + 12, spb);
         else
