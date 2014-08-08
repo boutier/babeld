@@ -706,7 +706,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
                    now.tv_sec - MAX(neigh->ifp->hello_interval / 100, 1))
                     send_update(neigh->ifp, 0, NULL, 0, NULL, 0);
             } else {
-                debugf("Received request for(%s from %s) from %s on %s.\n",
+                debugf("Received request for (%s from %s) from %s on %s.\n",
                        format_prefix(prefix, plen),
                        format_prefix(src_prefix, src_plen),
                        format_address(from), ifp->name);
