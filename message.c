@@ -697,7 +697,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
                        "from %s on %s -- dropping.\n",
                        format_address(from), ifp->name);
             } else {
-                debugf("Received request for(%s from %s) from %s on %s.\n",
+                debugf("Received request for (%s from %s) from %s on %s.\n",
                        format_prefix(prefix, plen),
                        format_prefix(src_prefix, src_plen),
                        format_address(from), ifp->name);
@@ -726,7 +726,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             if(rc < 0) goto fail;
             if(ae == 1)
                 src_plen += 96;
-            debugf("Received request (%d) for(%s, %s)"
+            debugf("Received request (%d) for (%s, %s)"
                    " from %s on %s (%s, %d).\n",
                    message[6],
                    format_prefix(prefix, plen),
