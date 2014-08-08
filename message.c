@@ -1592,7 +1592,7 @@ send_update_resend(struct interface *ifp,
 
     send_update(ifp, 1, prefix, plen, src_prefix, src_plen);
     record_resend(RESEND_UPDATE, prefix, plen, src_prefix, src_plen,
-                  0, 0, NULL, resend_delay);
+                  0, NULL, NULL, resend_delay);
 }
 
 void
