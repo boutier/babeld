@@ -1909,8 +1909,9 @@ send_multihop_request(struct interface *ifp,
     if(!if_up(ifp))
         return;
 
-    debugf("Sending request (%d) on %s for %s.\n",
-           hop_count, ifp->name, format_prefix(prefix, plen));
+    debugf("Sending request (%d) on %s for %s from %s.\n",
+           hop_count, ifp->name, format_prefix(prefix, plen),
+           format_prefix(src_prefix, src_plen));
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = 6 + 8 + pb;
