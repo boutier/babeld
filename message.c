@@ -1805,6 +1805,7 @@ send_request(struct interface *ifp,
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = !prefix ? 2 : 2 + pb;
+
     if(src_plen != 0) {
         spb = v4 ? ((src_plen - 96) + 7) / 8 : (src_plen + 7) / 8;
         len += spb + 1;
@@ -1854,6 +1855,7 @@ send_unicast_request(struct neighbour *neigh,
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = !prefix ? 2 : 2 + pb;
+
     if(src_plen != 0) {
         spb = v4 ? ((src_plen - 96) + 7) / 8 : (src_plen + 7) / 8;
         len += spb + 1;
@@ -1915,6 +1917,7 @@ send_multihop_request(struct interface *ifp,
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = 6 + 8 + pb;
+
     if(src_plen != 0) {
         spb = v4 ? ((src_plen - 96) + 7) / 8 : (src_plen + 7) / 8;
         len += spb;
@@ -1965,6 +1968,7 @@ send_unicast_multihop_request(struct neighbour *neigh,
     v4 = plen >= 96 && v4mapped(prefix);
     pb = v4 ? ((plen - 96) + 7) / 8 : (plen + 7) / 8;
     len = 6 + 8 + pb;
+
     if(src_plen != 0) {
         spb = v4 ? ((src_plen - 96) + 7) / 8 : (src_plen + 7) / 8;
         len += spb;

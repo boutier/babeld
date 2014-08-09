@@ -96,12 +96,12 @@ record_resend(int kind, const unsigned char *prefix, unsigned char plen,
     unsigned int ifindex = ifp ? ifp->ifindex : 0;
 
     if((kind == RESEND_REQUEST &&
-        input_filter(NULL, prefix, plen, src_prefix, src_plen, NULL, ifindex,
-                     NULL) >=
+        input_filter(NULL, prefix, plen, src_prefix, src_plen, NULL,
+                     ifindex, NULL) >=
         INFINITY) ||
        (kind == RESEND_UPDATE &&
-        output_filter(NULL, prefix, plen, src_prefix, src_plen, ifindex,
-                      NULL) >=
+        output_filter(NULL, prefix, plen, src_prefix, src_plen,
+                      ifindex, NULL) >=
         INFINITY))
         return 0;
 
