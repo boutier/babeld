@@ -565,7 +565,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
                    shortly after we sent a full update. */
                 if(neigh->ifp->last_update_time <
                    now.tv_sec - MAX(neigh->ifp->hello_interval / 100, 1))
-                    send_update(neigh->ifp, 0, NULL, 0, NULL, 0);
+                    send_update(neigh->ifp, 0, NULL, 0, zeroes, 0);
             } else {
                 send_update(neigh->ifp, 0, prefix, plen, zeroes, 0);
             }
@@ -1531,6 +1531,9 @@ buffer_update(struct interface *ifp,
     ifp->num_buffered_updates++;
 }
 
+/* Full wildcard update with prefix == src_prefix == NULL,
+   Standard wildcard update with prefix == NULL && src_prefix != NULL,
+   Specific wildcard update with prefix != NULL && src_prefix == NULL. */
 void
 send_update(struct interface *ifp, int urgent,
             const unsigned char *prefix, unsigned char plen,
@@ -1555,12 +1558,12 @@ send_update(struct interface *ifp, int urgent,
     if(!if_up(ifp))
         return;
 
-    if(prefix) {
+    if(prefix && src_prefix) {
         debugf("Sending update to %s for %s from %s.\n",
                ifp->name, format_prefix(prefix, plen),
                format_prefix(src_prefix, src_plen));
         buffer_update(ifp, prefix, plen, src_prefix, src_plen);
-    } else {
+    } else if(prefix || src_prefix) {
         struct route_stream *routes;
         send_self_update(ifp);
         debugf("Sending update to %s for any.\n", ifp->name);
@@ -1570,6 +1573,9 @@ send_update(struct interface *ifp, int urgent,
                 struct babel_route *route = route_stream_next(routes);
                 if(route == NULL)
                     break;
+                if((src_prefix && route->src->src_plen != 0) ||
+                   (prefix && route->src->src_plen == 0))
+                    continue;
                 buffer_update(ifp, route->src->prefix, route->src->plen,
                               route->src->src_prefix, route->src->src_plen);
             }
@@ -1579,6 +1585,10 @@ send_update(struct interface *ifp, int urgent,
         }
         set_timeout(&ifp->update_timeout, ifp->update_interval);
         ifp->last_update_time = now.tv_sec;
+        ifp->last_specific_update_time = now.tv_sec;
+    } else {
+        send_update(ifp, urgent, NULL, 0, zeroes, 0);
+        send_update(ifp, urgent, zeroes, 0, NULL, 0);
     }
     schedule_update_flush(ifp, urgent);
 }
