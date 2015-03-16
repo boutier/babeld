@@ -1406,6 +1406,10 @@ filter_link(struct nlmsghdr *nh, void *data)
     return 0;
 }
 
+/* If data is null, takes all addresses.  If data is not null, takes
+   either link-local or global addresses depending of the value of
+   data[4]. */
+
 static int
 filter_addresses(struct nlmsghdr *nh, void *data)
 {
