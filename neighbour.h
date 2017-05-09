@@ -39,6 +39,7 @@ struct neighbour {
     unsigned int rtt;
     struct timeval rtt_time;
     struct interface *ifp;
+    unsigned char is_incompatible;
 };
 
 extern struct neighbour *neighs;
