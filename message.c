@@ -721,7 +721,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
                                      message + 2 + parsed_len,
                                      len - parsed_len, channels, &channels_len,
                                      src_prefix, &src_plen);
-            if (rc < 0)
+            if(rc < 0)
                 goto done;
             is_ss = !is_default(src_prefix, src_plen);
 
