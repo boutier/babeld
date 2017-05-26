@@ -630,11 +630,6 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             int channels_len = MAX_CHANNEL_HOPS;
             unsigned short interval, seqno, metric;
             int rc, parsed_len, is_ss;
-            if(neigh->is_incompatible) {
-                debugf("Received incompatible update from %s on %s.\n",
-                       format_address(from), ifp->name);
-                goto done;
-            }
             if(len < 10) {
                 if(len < 2 || message[3] & 0x80)
                     have_v4_prefix = have_v6_prefix = 0;
@@ -820,15 +815,6 @@ parse_packet(const unsigned char *from, struct interface *ifp,
                    format_eui64(message + 8), seqno);
             handle_request(neigh, prefix, plen, src_prefix, src_plen,
                            message[6], seqno, message + 8);
-        } else if(type == MESSAGE_UPDATE_SRC_SPECIFIC ||
-                  type == MESSAGE_REQUEST_SRC_SPECIFIC ||
-                  type == MESSAGE_MH_REQUEST_SRC_SPECIFIC) {
-            if(!neigh->is_incompatible) {
-                neigh->is_incompatible = 1;
-                fprintf(stderr, "Incompatible neighbour detected: %s on %s "
-                        "(TLV type %d used).\n",
-                        format_address(from), ifp->name, type);
-            }
         } else {
             debugf("Received unknown packet type %d from %s on %s.\n",
                    type, format_address(from), ifp->name);
