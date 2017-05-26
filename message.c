@@ -1904,10 +1904,8 @@ send_request(struct interface *ifp,
             accumulate_bytes(ifp, src_prefix + 12, spb);
         else
             accumulate_bytes(ifp, src_prefix, spb);
-        end_message(ifp, MESSAGE_REQUEST_SRC_SPECIFIC, len);
-    } else {
-        end_message(ifp, MESSAGE_REQUEST, len);
     }
+    end_message(ifp, MESSAGE_REQUEST, len);
 }
 
 void
@@ -2040,10 +2038,8 @@ send_multihop_request(struct interface *ifp,
             accumulate_bytes(ifp, src_prefix + 12, spb);
         else
             accumulate_bytes(ifp, src_prefix, spb);
-        end_message(ifp, MESSAGE_MH_REQUEST_SRC_SPECIFIC, len);
-    } else {
-        end_message(ifp, MESSAGE_MH_REQUEST, len);
     }
+    end_message(ifp, MESSAGE_MH_REQUEST, len);
 }
 
 void
