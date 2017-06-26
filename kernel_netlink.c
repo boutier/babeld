@@ -1096,8 +1096,9 @@ parse_kernel_route_rta(struct rtmsg *rtm, int len, struct kernel_route *route)
         /* if RTA_DST is not a TLV, that's a default destination */
         const unsigned char zeroes[4] = {0, 0, 0, 0};
         v4tov6(route->prefix, zeroes);
-        v4tov6(route->src_prefix, zeroes);
         route->plen = 96;
+        v4tov6(route->src_prefix, zeroes);
+        route->src_plen = 96;
     }
     route->proto = rtm->rtm_protocol;
 
