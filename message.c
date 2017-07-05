@@ -124,7 +124,8 @@ static int
 parse_update_subtlv(struct interface *ifp, int metric, int ae,
                     const unsigned char *a, int alen,
                     unsigned char *channels, int *channels_len_return,
-                    unsigned char *src_prefix, unsigned char *src_plen)
+                    unsigned char *src_prefix, unsigned char *src_plen,
+                    unsigned char *path, unsigned char *pathlen)
 {
     int type, len, i = 0;
     int channels_len;
@@ -172,6 +173,23 @@ parse_update_subtlv(struct interface *ifp, int metric, int ae,
                 goto fail;
             if(ae == 1)
                 (*src_plen) += 96;
+        } else if(type == SUBTLV_PATH) {
+            unsigned short tmp;
+            if(len < 3)
+                goto fail;
+            DO_NTOHS(tmp, a + i + 2);
+            memset(path, 0, 4);
+            if(tmp == 0) {
+                fprintf(stderr, "Received 0-length path.");
+            } else if(len - 2 != (tmp + 7) / 8) {
+                fprintf(stderr, "Malformed path sub-TLV received.");
+                return -1;
+            } else {
+                if(tmp > 32)
+                    debugf("Truncating path (%d bits).\n", tmp);
+                *pathlen = tmp > 32 ? 32 : tmp;
+                memcpy(path, a + i + 4, (*pathlen + 7) / 8);
+            }
         } else {
             debugf("Received unknown%s Update sub-TLV %d.\n",
                    (type & 0x80) != 0 ? " mandatory" : "", type);
@@ -626,6 +644,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
         } else if(type == MESSAGE_UPDATE) {
             struct datum dt;
             unsigned char ae, real_plen, omitted, flags, *nh;
+            unsigned char pathlen = 0, path[4];
             unsigned char channels[MAX_CHANNEL_HOPS];
             int channels_len = MAX_CHANNEL_HOPS;
             unsigned short interval, seqno, metric;
@@ -714,7 +733,8 @@ parse_packet(const unsigned char *from, struct interface *ifp,
 
             rc = parse_update_subtlv(ifp, metric, ae, message + 2 + parsed_len,
                                      len - parsed_len, channels, &channels_len,
-                                     dt.src_prefix, &dt.src_plen);
+                                     dt.src_prefix, &dt.src_plen, path,
+                                     &pathlen);
             if(rc < 0)
                 goto done;
             is_ss = !is_default(dt.src_prefix, dt.src_plen);
@@ -733,7 +753,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             }
 
             update_route(router_id, &dt, seqno, metric, interval, neigh, nh,
-                         channels, channels_len);
+                         channels, channels_len, path, pathlen);
         } else if(type == MESSAGE_REQUEST) {
             struct datum dt;
             int rc, is_ss;
@@ -1215,7 +1235,8 @@ static void
 really_send_update(struct interface *ifp,
                    const unsigned char *id, const struct datum *dt,
                    unsigned short seqno, unsigned short metric,
-                   unsigned char *channels, int channels_len)
+                   unsigned char *channels, int channels_len,
+                   const unsigned char *path, unsigned char pathlen)
 {
     int add_metric, v4, real_plen, omit = 0;
     const unsigned char *real_prefix;
@@ -1224,12 +1245,14 @@ really_send_update(struct interface *ifp,
     int real_src_plen = 0;
     unsigned short flags = 0;
     int channels_size;
+    int path_size;
     int is_ss = !is_default(dt->src_prefix, dt->src_plen);
 
     if(diversity_kind != DIVERSITY_CHANNEL)
         channels_len = -1;
 
     channels_size = channels_len >= 0 ? channels_len + 2 : 0;
+    path_size = pathlen > 0 ? 4 + (pathlen + 7) / 8 : 0;
 
     if(!if_up(ifp))
         return;
@@ -1291,7 +1314,7 @@ really_send_update(struct interface *ifp,
 
     src_tlv_size = is_ss ? 2 + 1 + (real_src_plen + 7) / 8 : 0;
     start_message(ifp, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
-                  src_tlv_size + channels_size);
+                  src_tlv_size + channels_size + path_size);
     accumulate_byte(ifp, v4 ? 1 : 2);
     accumulate_byte(ifp, flags);
     accumulate_byte(ifp, real_plen);
@@ -1312,8 +1335,14 @@ really_send_update(struct interface *ifp,
         accumulate_byte(ifp, channels_len);
         accumulate_bytes(ifp, channels, channels_len);
     }
+    if(pathlen > 0) {
+        accumulate_byte(ifp, SUBTLV_PATH);
+        accumulate_byte(ifp, 2 + (pathlen + 7) / 8);
+        accumulate_short(ifp, pathlen);
+        accumulate_bytes(ifp, path, (pathlen + 7) / 8);
+    }
     end_message(ifp, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
-                src_tlv_size + channels_size);
+                src_tlv_size + channels_size + path_size);
 
     if(flags & 0x80) {
         memcpy(ifp->buffered_prefix, dt->prefix, 16);
@@ -1419,7 +1448,7 @@ flushupdates(struct interface *ifp)
 
             if(xroute && (!route || xroute->metric <= kernel_metric)) {
                 really_send_update(ifp, myid, &xroute->dt, myseqno,
-                                   xroute->metric, NULL, 0);
+                                   xroute->metric, NULL, 0, NULL, 0);
                 last = &xroute->dt;
             } else if(route) {
                 unsigned char channels[MAX_CHANNEL_HOPS];
@@ -1460,14 +1489,15 @@ flushupdates(struct interface *ifp)
                 }
 
                 really_send_update(ifp, route->src->id, &route->src->dt,
-                                   seqno, metric, channels, chlen);
+                                   seqno, metric, channels, chlen,
+                                   route->src->path, route->src->pathlen);
                 update_source(route->src, seqno, metric);
                 last = &route->src->dt;
             } else {
             /* There's no route for this prefix.  This can happen shortly
                after an xroute has been retracted, so send a retraction. */
                 really_send_update(ifp, myid, &b[i].dt, myseqno, INFINITY,
-                                   NULL, -1);
+                                   NULL, -1, NULL, 0);
             }
         }
         schedule_flush_now(ifp);

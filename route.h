@@ -28,6 +28,8 @@ THE SOFTWARE.
 struct babel_route {
     struct source *src;
     unsigned short refmetric;
+    unsigned char path[4];
+    unsigned char pathlen;
     unsigned short cost;
     unsigned short add_metric;
     unsigned short seqno;
@@ -90,7 +92,8 @@ int route_old(struct babel_route *route);
 int route_expired(struct babel_route *route);
 int route_interferes(struct babel_route *route, struct interface *ifp);
 int update_feasible(struct source *src,
-                    unsigned short seqno, unsigned short refmetric);
+                    unsigned short seqno, unsigned short refmetric,
+                    const unsigned char *path, unsigned char pathlen);
 void change_smoothing_half_life(int half_life);
 int route_smoothed_metric(struct babel_route *route);
 struct babel_route *find_best_route(const struct datum *dt,
@@ -105,7 +108,8 @@ struct babel_route *update_route(const unsigned char *id,
                            unsigned short seqno, unsigned short refmetric,
                            unsigned short interval, struct neighbour *neigh,
                            const unsigned char *nexthop,
-                           const unsigned char *channels, int channels_len);
+                           const unsigned char *channels, int channels_len,
+                           const unsigned char *path, unsigned char pathlen);
 void retract_neighbour_routes(struct neighbour *neigh);
 void send_unfeasible_request(struct neighbour *neigh, int force,
                              unsigned short seqno, unsigned short metric,

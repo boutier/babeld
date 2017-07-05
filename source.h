@@ -29,6 +29,8 @@ struct source {
     struct datum dt;
     unsigned short seqno;
     unsigned short metric;
+    unsigned char path[4];
+    unsigned char pathlen;
     unsigned short route_count;
     time_t time;
 };

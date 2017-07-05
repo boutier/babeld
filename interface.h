@@ -119,12 +119,14 @@ struct interface {
     unsigned int rtt_min;
     unsigned int rtt_max;
     unsigned int max_rtt_penalty;
+    unsigned char path; /* if_pathlen is common to all interfaces. */
 };
 
 #define IF_CONF(_ifp, _field) \
     ((_ifp)->conf ? (_ifp)->conf->_field : 0)
 
 extern struct interface *interfaces;
+extern unsigned char if_pathlen;
 
 #define FOR_ALL_INTERFACES(_ifp) for(_ifp = interfaces; _ifp; _ifp = _ifp->next)
 

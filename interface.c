@@ -44,6 +44,7 @@ THE SOFTWARE.
 #include "xroute.h"
 
 struct interface *interfaces = NULL;
+unsigned char if_pathlen = 0;
 
 static struct interface *
 last_interface(void)

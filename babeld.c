@@ -1075,13 +1075,14 @@ dump_route(FILE *out, struct babel_route *route)
         snprintf(channels + j, 100 - j, ")");
     }
 
-    fprintf(out, "%s%s%s metric %d (%d) refmetric %d id %s "
+    fprintf(out, "%s%s%s metric %d (%d) refmetric %d path %s id %s "
             "seqno %d%s age %d via %s neigh %s%s%s%s\n",
             format_prefix(route->src->dt.prefix, route->src->dt.plen),
             is_ss ? " from " : "",
             is_ss ? format_prefix(route->src->dt.src_prefix,
                                   route->src->dt.src_plen) : "",
             route_metric(route), route_smoothed_metric(route), route->refmetric,
+            format_bits(route->path, route->pathlen),
             format_eui64(route->src->id),
             (int)route->seqno,
             channels,

@@ -284,6 +284,50 @@ format_prefix(const unsigned char *prefix, unsigned char plen)
     return buf[i];
 }
 
+static int
+format_4bits(char *str, int len, unsigned char c, int bits)
+{
+    if(bits <= 0 || len <= 0)
+        return 0;
+    if(len < (MIN(bits, 4))%4 + 2) {
+        if(len >= 2)
+            *(str++) = '+';
+        *str = '\0';
+        return 1;
+    }
+    if(bits >= 4)
+        *str = (c < 10) ? '0' + c : 'a' + (c - 10);
+    if(bits < 4) {
+        *str = '|';
+        *(++str) = (c & 8) ? '1' : '0';
+        if(bits >= 2)
+            *(++str) = (c & 4) ? '1' : '0';
+        if(bits >= 3)
+            *(++str) = (c & 2) ? '1' : '0';
+    }
+    *(++str) = '\0';
+    return (bits >= 4) ? 1 : bits + 1;
+}
+
+const char *
+format_bits(const unsigned char *prefix, unsigned char plen)
+{
+    static char buf[2][16];
+    static int i = 0;
+    i = (i + 1) % 2;
+    int n = 0;
+    int bits = plen;
+    while(bits > 0) {
+        n += format_4bits(buf[i] + n, 16 - n, (*prefix) >> 4, bits);
+        n += format_4bits(buf[i] + n, 16 - n, (*prefix) & 0xF, bits - 4);
+        bits -= 8;
+        prefix ++;
+    }
+    if(buf[i][0] == 0)
+        strcpy(buf[i], "none");
+    return buf[i];
+}
+
 const char *
 format_eui64(const unsigned char *eui)
 {

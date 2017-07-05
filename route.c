@@ -576,7 +576,8 @@ retract_route(struct babel_route *route)
 int
 route_feasible(struct babel_route *route)
 {
-    return update_feasible(route->src, route->seqno, route->refmetric);
+    return update_feasible(route->src, route->seqno, route->refmetric,
+                           route->path, route->pathlen);
 }
 
 int
@@ -630,9 +631,20 @@ route_interferes(struct babel_route *route, struct interface *ifp)
     }
 }
 
+static inline int
+path_ok(struct source *src, const unsigned char *path, unsigned char pathlen)
+{
+    int pathcmp;
+    if(pathlen == 0 || src->pathlen == 0)
+        return 0;
+    pathcmp = prefix_cmp(path, pathlen, src->path, src->pathlen);
+    return pathcmp != PST_LESS_SPECIFIC;
+}
+
 int
 update_feasible(struct source *src,
-                unsigned short seqno, unsigned short refmetric)
+                unsigned short seqno, unsigned short refmetric,
+                const unsigned char *path, unsigned char pathlen)
 {
     if(src == NULL)
         return 1;
@@ -645,8 +657,9 @@ update_feasible(struct source *src,
         /* Retractions are always feasible */
         return 1;
 
-    return (seqno_compare(seqno, src->seqno) > 0 ||
-            (src->seqno == seqno && refmetric < src->metric));
+    return seqno_compare(seqno, src->seqno) > 0 ||
+        (src->seqno == seqno && refmetric < src->metric) ||
+        path_ok(src, path, pathlen);
 }
 
 void
@@ -823,7 +836,8 @@ update_route(const unsigned char *id, const struct datum *dt,
              unsigned short seqno, unsigned short refmetric,
              unsigned short interval,
              struct neighbour *neigh, const unsigned char *nexthop,
-             const unsigned char *channels, int channels_len)
+             const unsigned char *channels, int channels_len,
+             const unsigned char *path, unsigned char pathlen)
 {
     struct babel_route *route;
     struct source *src;
@@ -862,7 +876,7 @@ update_route(const unsigned char *id, const struct datum *dt,
     if(src == NULL)
         return NULL;
 
-    feasible = update_feasible(src, seqno, refmetric);
+    feasible = update_feasible(src, seqno, refmetric, path, pathlen);
     metric = MIN((int)refmetric + neighbour_cost(neigh) + add_metric, INFINITY);
 
     if(route) {
@@ -879,11 +893,13 @@ update_route(const unsigned char *id, const struct datum *dt,
            the update. */
         if(!feasible && route->installed) {
             debugf("Unfeasible update for installed route to %s "
-                   "(%s %d %d -> %s %d %d).\n",
+                   "(%s %d %d %s -> %s %d %d %s).\n",
                    format_prefix(src->dt.prefix, src->dt.plen),
                    format_eui64(route->src->id),
                    route->seqno, route->refmetric,
-                   format_eui64(src->id), seqno, refmetric);
+                   format_bits(route->path, route->pathlen),
+                   format_eui64(src->id), seqno, refmetric,
+                   format_bits(path, pathlen));
             if(src != route->src) {
                 uninstall_route(route);
                 lost = 1;
@@ -915,6 +931,8 @@ update_route(const unsigned char *id, const struct datum *dt,
             route->channels_len = channels_len;
         }
 
+        memcpy(route->path, path, 4);
+        route->pathlen = pathlen;
         change_route_metric(route,
                             refmetric, neighbour_cost(neigh), add_metric);
         route->hold_time = hold_time;
@@ -947,6 +965,8 @@ update_route(const unsigned char *id, const struct datum *dt,
 
         route->src = retain_source(src);
         route->refmetric = refmetric;
+        memcpy(route->path, path, 4);
+        route->pathlen = pathlen;
         route->cost = neighbour_cost(neigh);
         route->add_metric = add_metric;
         route->seqno = seqno;
