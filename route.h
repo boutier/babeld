@@ -73,6 +73,22 @@ route_metric_noninterfering(const struct babel_route *route)
     return MIN(m, INFINITY);
 }
 
+static inline int
+append_path(unsigned char *newpath, const struct babel_route *route,
+            const struct interface *ifp)
+{
+    int last = route->pathlen / 8;
+    int rest = 8 - (route->pathlen % 8);
+    if(route->pathlen + if_pathlen > 4 * 8)
+        return 0;
+    memset(newpath, 0, 4);
+    memcpy(newpath, route->path, (route->pathlen + 7) / 8);
+    newpath[last] = newpath[last] | ifp->path >> (route->pathlen % 8);
+    if(rest < if_pathlen)
+        newpath[last+1] = ifp->path << rest;
+    return route->pathlen + if_pathlen;
+}
+
 struct babel_route *find_route(const struct datum *dt, struct neighbour *neigh,
                                const unsigned char *nexthop);
 struct babel_route *find_installed_route(const struct datum *dt);

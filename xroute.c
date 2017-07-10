@@ -32,11 +32,11 @@ THE SOFTWARE.
 #include "kernel.h"
 #include "neighbour.h"
 #include "message.h"
+#include "interface.h"
 #include "route.h"
 #include "xroute.h"
 #include "util.h"
 #include "configuration.h"
-#include "interface.h"
 #include "local.h"
 
 static struct xroute *xroutes;

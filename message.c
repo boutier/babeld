@@ -1448,10 +1448,13 @@ flushupdates(struct interface *ifp)
 
             if(xroute && (!route || xroute->metric <= kernel_metric)) {
                 really_send_update(ifp, myid, &xroute->dt, myseqno,
-                                   xroute->metric, NULL, 0, NULL, 0);
+                                   xroute->metric, NULL, 0, &ifp->path,
+                                   if_pathlen);
                 last = &xroute->dt;
             } else if(route) {
                 unsigned char channels[MAX_CHANNEL_HOPS];
+                unsigned char path[4];
+                unsigned char pathlen;
                 int chlen;
                 struct interface *route_ifp = route->neigh->ifp;
                 unsigned short metric;
@@ -1462,6 +1465,7 @@ flushupdates(struct interface *ifp)
                     route_interferes(route, ifp) ?
                     route_metric(route) :
                     route_metric_noninterfering(route);
+                pathlen = route->pathlen ? append_path(path, route, ifp) : 0;
 
                 if(metric < INFINITY)
                     satisfy_request(&route->src->dt, seqno, route->src->id,
@@ -1490,7 +1494,7 @@ flushupdates(struct interface *ifp)
 
                 really_send_update(ifp, route->src->id, &route->src->dt,
                                    seqno, metric, channels, chlen,
-                                   route->src->path, route->src->pathlen);
+                                   path, pathlen);
                 update_source(route->src, seqno, metric);
                 last = &route->src->dt;
             } else {
