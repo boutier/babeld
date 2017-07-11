@@ -126,7 +126,7 @@ struct interface {
     ((_ifp)->conf ? (_ifp)->conf->_field : 0)
 
 extern struct interface *interfaces;
-extern unsigned char if_pathlen;
+extern const unsigned char if_pathlen;
 
 #define FOR_ALL_INTERFACES(_ifp) for(_ifp = interfaces; _ifp; _ifp = _ifp->next)
 

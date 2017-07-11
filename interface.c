@@ -44,7 +44,7 @@ THE SOFTWARE.
 #include "xroute.h"
 
 struct interface *interfaces = NULL;
-unsigned char if_pathlen = 0;
+const unsigned char if_pathlen = 4;
 
 static struct interface *
 last_interface(void)
@@ -64,6 +64,7 @@ struct interface *
 add_interface(char *ifname, struct interface_conf *if_conf)
 {
     struct interface *ifp;
+    static unsigned char path_count = 0;
 
     FOR_ALL_INTERFACES(ifp) {
         if(strcmp(ifp->name, ifname) == 0) {
@@ -84,6 +85,8 @@ add_interface(char *ifname, struct interface_conf *if_conf)
     ifp->bucket_time = now.tv_sec;
     ifp->bucket = BUCKET_TOKENS_MAX;
     ifp->hello_seqno = (random() & 0xFFFF);
+    ifp->path = path_count << (8 - if_pathlen);
+    path_count = (path_count + 1 % (1 << if_pathlen));
 
     if(interfaces == NULL)
         interfaces = ifp;
