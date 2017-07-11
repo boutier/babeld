@@ -1,0 +1,102 @@
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  Type = TBD   |    Length     |         Path length           |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Path (serie of bits)...
+   +-+-+-+-+-+-
+
+    Source Prefix...
+
+  - TBD = 124
+
+  - Path length : in bits
+
+  - Path : serie of bits.
+
+Basic principle: a route may be associated to a path.  If so, when such a route
+is to be announced, the sending node appends its local ID to the path of the
+route and then announces it with that new path.  It uses this sub-TLV to
+announce the path associated to the route.
+
+When a node has installed a route with a path P and receive an update for this
+route with a path Q, then:
+
+  - if P is a suffix of Q (Q = PX for some X non empty),
+    then the route MAY pass by us.
+
+  - otherwise (P = Q, Q is a suffit of P or P and Q are disjoint) the route does
+    not pass by us.  Thus, it is feasible (even if the feasibility distance is
+    less than the metric or the seqno is not the most recent one).
+
+    Examples:
+       12 installed, 1234 received --> 1234 not path-feasible
+       1234 installed, 12 received --> 12 path-feasible => 12 feasible
+
+There is only one constraint on the local ID: its length MUST be strictly
+positive.
+
+* Routes without paths
+
+When we receive an update without any path, we MUST NOT append any path to this
+update when announcing it, otherwise routing loops may occur.
+
+    C:(Z,1)
+    B:(Z)
+    Z:(Z,1)     A:(Z,11)    B:(Z)
+                 <-
+     <- ,---------,        <-
+Z ---- A           B -------- C
+       |'---------'          /
+       |  ->                /
+       \  (Z feasible)     /
+        `-----------------'
+          ->
+          (Z feasible)
+
+Thus, if a route without path is installed, a route with a path is always
+feasible.  But if a route with a path is installed, a route without a path is
+always unfeasible.  This does not follows the behaviour described in the basic
+principles.
+
+    Examples:
+       [] installed, 1234 received --> 1234 feasible
+       1234 installed, [] received --> [] not path-feasible
+
+* Changing the size of the local ID.
+
+The local ID length can be increased or decreased.  If a node changes its
+ID-length, it does not change the path-feasibility condition for all updates
+received for this route, included the ones it sends.
+
+Each update should append the same amount of bits for each update: the base
+length.  The base length can be increased or decreased.
+
+The path MUST be kept scritly positive.
+
+The path can be completely removed.
+
+* Recommandations and potential usages
+
+We recommend that a node adds a fixed-length local-ID (each local ID has the
+same amount of bits).  You may want to have one ID per neighbour and unicast
+your updates, or one ID per interface.  The flexibility of the mechanism allows
+you to use the same ID for different neighbour or interfaces, such that you may
+limit the ID length to one bit and still partition your interfaces in two.
+
+* Receiving and sending paths
+
+(r) A received path may always be ignored.  Then, the route has no attached path and
+cannot be announced with a new path.
+
+(s) A route can be announced without a path.
+
+(r) A received zero-length path MUST be ignored.
+
+An implementation can globally limit the length of its paths to some value.
+Then:
+
+  - (r) A received path can be truncated to this value.
+
+  - (s) A sent path can be truncated to a greater value.  The resulting path MUST be
+    strictly greater than the original path.
