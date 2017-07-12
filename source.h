@@ -40,6 +40,7 @@ struct source *find_source(const unsigned char *id, const struct datum *dt,
 struct source *retain_source(struct source *src);
 void release_source(struct source *src);
 void update_source(struct source *src,
-                   unsigned short seqno, unsigned short metric);
+                   unsigned short seqno, unsigned short metric,
+                   const unsigned char *path, unsigned char pathlen);
 void expire_sources(void);
 void check_sources_released(void);

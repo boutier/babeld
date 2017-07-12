@@ -178,7 +178,8 @@ release_source(struct source *src)
 
 void
 update_source(struct source *src,
-              unsigned short seqno, unsigned short metric)
+              unsigned short seqno, unsigned short metric,
+              const unsigned char *path, unsigned char pathlen)
 {
     if(metric >= INFINITY)
         return;
@@ -192,6 +193,8 @@ update_source(struct source *src,
        (src->seqno == seqno && src->metric > metric)) {
         src->seqno = seqno;
         src->metric = metric;
+        memcpy(src->path, path, 4);
+        src->pathlen = pathlen;
     }
     src->time = now.tv_sec;
 }

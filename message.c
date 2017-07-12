@@ -1495,7 +1495,8 @@ flushupdates(struct interface *ifp)
                 really_send_update(ifp, route->src->id, &route->src->dt,
                                    seqno, metric, channels, chlen,
                                    path, pathlen);
-                update_source(route->src, seqno, metric);
+                update_source(route->src, seqno, metric, route->path,
+                              route->pathlen);
                 last = &route->src->dt;
             } else {
             /* There's no route for this prefix.  This can happen shortly
