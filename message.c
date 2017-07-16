@@ -522,12 +522,14 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             send_ack(neigh, nonce, interval);
         } else if(type == MESSAGE_ACK) {
             int rc;
-            debugf("Received ack from %s on %s.\n",
-                   format_address(from), ifp->name);
+            unsigned short nonce;
+            DO_NTOHS(nonce, message + 2);
+            debugf("Received ack of %u from %s on %s.\n",
+                   nonce, format_address(from), ifp->name);
             rc = parse_other_subtlv(message + 4, len - 2, "Ack");
             if(rc < 0)
                 goto done;
-            /* Nothing right now */
+            no_resend(nonce, neigh);
         } else if(type == MESSAGE_HELLO) {
             unsigned short seqno, interval;
             int changed, have_timestamp, rc;
@@ -1233,6 +1235,7 @@ really_send_update(struct interface *ifp,
     unsigned short flags = 0;
     int channels_size;
     int is_ss = !is_default(dt->src_prefix, dt->src_plen);
+    int nonce = find_nonce(dt);
 
     if(diversity_kind != DIVERSITY_CHANNEL)
         channels_len = -1;
@@ -1248,7 +1251,7 @@ really_send_update(struct interface *ifp,
 
     metric = MIN(metric + add_metric, INFINITY);
     /* Worst case */
-    ensure_space(ifp, 20 + 12 + 28 + 18);
+    ensure_space(ifp, 20 + 12 + 28 + 18 + 8);
 
     v4 = dt->plen >= 96 && v4mapped(dt->prefix);
 
@@ -1322,6 +1325,14 @@ really_send_update(struct interface *ifp,
     }
     end_message(ifp, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
                 src_tlv_size + channels_size);
+
+    if(nonce >= 0) {
+        start_message(ifp, MESSAGE_ACK_REQ, 6);
+        accumulate_short(ifp, 0);
+        accumulate_short(ifp, nonce);
+        accumulate_short(ifp, 1);
+        end_message(ifp, MESSAGE_ACK_REQ, 6);
+    }
 
     if(flags & 0x80) {
         memcpy(ifp->buffered_prefix, dt->prefix, 16);

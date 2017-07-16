@@ -37,6 +37,9 @@ struct resend {
     unsigned short seqno;
     unsigned char id[8];
     struct interface *ifp;
+    struct neighbour **neigh;
+    int neigh_num;
+    unsigned short nonce;
     struct resend *next;
 };
 
@@ -44,7 +47,7 @@ extern struct timeval resend_time;
 
 struct resend *find_request(const struct datum *dt,
                             struct resend **previous_return);
-void flush_resends(struct neighbour *neigh);
+void flush_resends(const struct neighbour *neigh);
 int record_resend(int kind, const struct datum *dt, unsigned short seqno,
                   const unsigned char *id, struct interface *ifp, int delay);
 int unsatisfied_request(const struct datum *dt, unsigned short seqno,
@@ -57,3 +60,5 @@ int satisfy_request(const struct datum *dt, unsigned short seqno,
 void expire_resend(void);
 void recompute_resend_time(void);
 void do_resend(void);
+int find_nonce(const struct datum *dt);
+void no_resend(unsigned short nonce, const struct neighbour *neigh);
