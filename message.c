@@ -1047,11 +1047,11 @@ accumulate_bytes(struct interface *ifp,
 }
 
 static int
-start_unicast_message(struct neighbour *neigh, int type, int len)
+ensure_unicast_space(struct neighbour *neigh, int space)
 {
     if(unicast_neighbour) {
         if(neigh != unicast_neighbour ||
-           unicast_buffered + len + 2 >=
+           unicast_buffered + space >=
            MIN(UNICAST_BUFSIZE, neigh->ifp->bufsize))
             flush_unicast(0);
     }
@@ -1061,9 +1061,17 @@ start_unicast_message(struct neighbour *neigh, int type, int len)
         perror("malloc(unicast_buffer)");
         return -1;
     }
+    return 0;
+}
+
+static int
+start_unicast_message(struct neighbour *neigh, int type, int len)
+{
+    int rc = ensure_unicast_space(neigh, len + 2);
+    if(rc < 0)
+        return -1;
 
     unicast_neighbour = neigh;
-
     unicast_buffer[unicast_buffered++] = type;
     unicast_buffer[unicast_buffered++] = len;
     return 1;
@@ -1321,6 +1329,107 @@ really_send_update(struct interface *ifp,
     }
 }
 
+static void
+really_send_unicast_update(struct neighbour *neigh,
+                           const unsigned char *id, const struct datum *dt,
+                           unsigned short seqno, unsigned short metric,
+                           unsigned char *channels, int channels_len)
+{
+    int add_metric, v4, real_plen, omit = 0;
+    const unsigned char *real_prefix;
+    const unsigned char *real_src_prefix = NULL;
+    int src_tlv_size = 0;
+    int real_src_plen = 0;
+    unsigned short flags = 0;
+    int channels_size;
+    int is_ss = !is_default(dt->src_prefix, dt->src_plen);
+    int nonce = find_nonce(dt);
+
+    if(diversity_kind != DIVERSITY_CHANNEL)
+        channels_len = -1;
+
+    channels_size = channels_len >= 0 ? channels_len + 2 : 0;
+
+    if(!if_up(neigh->ifp))
+        return;
+
+    add_metric = output_filter(id, dt, neigh->ifp->ifindex);
+    if(add_metric >= INFINITY)
+        return;
+
+    metric = MIN(metric + add_metric, INFINITY);
+    /* Worst case */
+    /* TODO: à quoi ça correspond, tout ça ? */
+    ensure_unicast_space(neigh, 20 + 12 + 28 + 18 + 8);
+
+    v4 = dt->plen >= 96 && v4mapped(dt->prefix);
+
+    if(v4) {
+        if(!neigh->ifp->ipv4)
+            return;
+        start_unicast_message(neigh, MESSAGE_NH, 6);
+        accumulate_unicast_byte(neigh, 1);
+        accumulate_unicast_byte(neigh, 0);
+        accumulate_unicast_bytes(neigh, neigh->ifp->ipv4, 4);
+        end_unicast_message(neigh, MESSAGE_NH, 6);
+
+        real_prefix = dt->prefix + 12;
+        real_plen = dt->plen - 96;
+        real_src_prefix = dt->src_prefix + 12;
+        real_src_plen = dt->src_plen - 96;
+    } else {
+        real_prefix = dt->prefix;
+        real_plen = dt->plen;
+        real_src_prefix = dt->src_prefix;
+        real_src_plen = dt->src_plen;
+    }
+
+    if(real_plen == 128 && memcmp(real_prefix + 8, id, 8) == 0) {
+        flags |= 0x40;
+    } else {
+        start_unicast_message(neigh, MESSAGE_ROUTER_ID, 10);
+        accumulate_unicast_short(neigh, 0);
+        accumulate_unicast_bytes(neigh, id, 8);
+        end_unicast_message(neigh, MESSAGE_ROUTER_ID, 10);
+    }
+
+    src_tlv_size = is_ss ? 2 + 1 + (real_src_plen + 7) / 8 : 0;
+    start_unicast_message(neigh, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 -
+                          omit + src_tlv_size + channels_size);
+    accumulate_unicast_byte(neigh, v4 ? 1 : 2);
+    accumulate_unicast_byte(neigh, flags);
+    accumulate_unicast_byte(neigh, real_plen);
+    accumulate_unicast_byte(neigh, omit);
+    accumulate_unicast_short(neigh, (neigh->ifp->update_interval + 5) / 10);
+    accumulate_unicast_short(neigh, seqno);
+    accumulate_unicast_short(neigh, metric);
+    accumulate_unicast_bytes(neigh, real_prefix + omit,
+                             (real_plen + 7) / 8 - omit);
+    if(is_ss) {
+        accumulate_unicast_byte(neigh, SUBTLV_SOURCE_PREFIX);
+        accumulate_unicast_byte(neigh, 1 + (real_src_plen + 7) / 8);
+        accumulate_unicast_byte(neigh, real_src_plen);
+        accumulate_unicast_bytes(neigh, real_src_prefix,
+                                 (real_src_plen + 7) / 8);
+    }
+    /* Note that an empty channels TLV is different from no such TLV. */
+    if(channels_len >= 0) {
+        accumulate_unicast_byte(neigh, 2);
+        accumulate_unicast_byte(neigh, channels_len);
+        accumulate_unicast_bytes(neigh, channels, channels_len);
+    }
+    end_unicast_message(neigh, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
+                        src_tlv_size + channels_size);
+
+    if(nonce >= 0) {
+        start_unicast_message(neigh, MESSAGE_ACK_REQ, 6);
+        accumulate_unicast_short(neigh, 0);
+        accumulate_unicast_short(neigh, nonce);
+        accumulate_unicast_short(neigh, 1);
+        end_unicast_message(neigh, MESSAGE_ACK_REQ, 6);
+    }
+}
+
 static int
 compare_buffered_updates(const void *av, const void *bv)
 {
@@ -1364,10 +1473,80 @@ compare_buffered_updates(const void *av, const void *bv)
     return memcmp(a->dt.src_prefix, b->dt.src_prefix, 16);
 }
 
+static int
+prepare_update(struct interface *ifp, struct neighbour *neigh,
+               const struct datum *dt, struct datum **last)
+{
+    struct xroute *xroute;
+    struct babel_route *route;
+
+    xroute = find_xroute(dt);
+    route = find_installed_route(dt);
+
+    if(xroute && (!route || xroute->metric <= kernel_metric)) {
+        if(neigh)
+            really_send_unicast_update(neigh, myid, &xroute->dt, myseqno,
+                                       xroute->metric, NULL, 0);
+        else
+            really_send_update(ifp, myid, &xroute->dt, myseqno,
+                               xroute->metric, NULL, 0);
+        if(last)
+            *last = &xroute->dt;
+    } else if(route) {
+        unsigned char channels[MAX_CHANNEL_HOPS];
+        int chlen;
+        struct interface *route_ifp = route->neigh->ifp;
+        unsigned short metric;
+        unsigned short seqno;
+
+        seqno = route->seqno;
+        metric =
+            route_interferes(route, ifp) ?
+            route_metric(route) :
+            route_metric_noninterfering(route);
+
+        if(metric < INFINITY)
+            satisfy_request(&route->src->dt, seqno, route->src->id, ifp);
+
+        if((ifp->flags & IF_SPLIT_HORIZON) && route->neigh->ifp == ifp)
+            return -1;
+
+        if(route_ifp->channel == IF_CHANNEL_NONINTERFERING) {
+            memcpy(channels, route->channels,
+                   MIN(route->channels_len, MAX_CHANNEL_HOPS));
+            chlen = MIN(route->channels_len, MAX_CHANNEL_HOPS);
+        } else {
+            if(route_ifp->channel == IF_CHANNEL_UNKNOWN)
+                channels[0] = IF_CHANNEL_INTERFERING;
+            else {
+                assert(route_ifp->channel > 0 && route_ifp->channel <= 255);
+                channels[0] = route_ifp->channel;
+            }
+            memcpy(channels + 1, route->channels,
+                   MIN(route->channels_len, MAX_CHANNEL_HOPS - 1));
+            chlen = 1 + MIN(route->channels_len, MAX_CHANNEL_HOPS - 1);
+        }
+
+        if(neigh)
+            really_send_unicast_update(neigh, route->src->id, &route->src->dt,
+                                       seqno, metric, channels, chlen);
+        else
+            really_send_update(ifp, route->src->id, &route->src->dt, seqno,
+                               metric, channels, chlen);
+        if(last)
+            *last = &route->src->dt;
+        update_source(route->src, seqno, metric);
+    } else {
+        /* There's no route for this prefix.  This can happen shortly
+           after an xroute has been retracted, so send a retraction. */
+        really_send_update(ifp, myid, dt, myseqno, INFINITY, NULL, -1);
+    }
+    return 0;
+}
+
 void
 flushupdates(struct interface *ifp)
 {
-    struct xroute *xroute;
     struct babel_route *route;
     struct datum *last = NULL;
     int i;
@@ -1414,61 +1593,9 @@ flushupdates(struct interface *ifp)
             if(last && memcmp(last, &b[i].dt, sizeof(struct datum)) == 0)
                 continue;
 
-            xroute = find_xroute(&b[i].dt);
-            route = find_installed_route(&b[i].dt);
-
-            if(xroute && (!route || xroute->metric <= kernel_metric)) {
-                really_send_update(ifp, myid, &xroute->dt, myseqno,
-                                   xroute->metric, NULL, 0);
-                last = &xroute->dt;
-            } else if(route) {
-                unsigned char channels[MAX_CHANNEL_HOPS];
-                int chlen;
-                struct interface *route_ifp = route->neigh->ifp;
-                unsigned short metric;
-                unsigned short seqno;
-
-                seqno = route->seqno;
-                metric =
-                    route_interferes(route, ifp) ?
-                    route_metric(route) :
-                    route_metric_noninterfering(route);
-
-                if(metric < INFINITY)
-                    satisfy_request(&route->src->dt, seqno, route->src->id,
-                                    ifp);
-
-                if((ifp->flags & IF_SPLIT_HORIZON) &&
-                   route->neigh->ifp == ifp)
-                    continue;
-
-                if(route_ifp->channel == IF_CHANNEL_NONINTERFERING) {
-                    memcpy(channels, route->channels,
-                           MIN(route->channels_len, MAX_CHANNEL_HOPS));
-                    chlen = MIN(route->channels_len, MAX_CHANNEL_HOPS);
-                } else {
-                    if(route_ifp->channel == IF_CHANNEL_UNKNOWN)
-                        channels[0] = IF_CHANNEL_INTERFERING;
-                    else {
-                        assert(route_ifp->channel > 0 &&
-                               route_ifp->channel <= 255);
-                        channels[0] = route_ifp->channel;
-                    }
-                    memcpy(channels + 1, route->channels,
-                           MIN(route->channels_len, MAX_CHANNEL_HOPS - 1));
-                    chlen = 1 + MIN(route->channels_len, MAX_CHANNEL_HOPS - 1);
-                }
-
-                really_send_update(ifp, route->src->id, &route->src->dt,
-                                   seqno, metric, channels, chlen);
-                update_source(route->src, seqno, metric);
-                last = &route->src->dt;
-            } else {
-            /* There's no route for this prefix.  This can happen shortly
-               after an xroute has been retracted, so send a retraction. */
-                really_send_update(ifp, myid, &b[i].dt, myseqno, INFINITY,
-                                   NULL, -1);
-            }
+            int rc = prepare_update(ifp, NULL, &b[i].dt, &last);
+            if(rc < 0)
+                continue;
         }
         schedule_flush_now(ifp);
     done:
@@ -1591,6 +1718,12 @@ send_update_resend(struct interface *ifp, const struct datum *dt)
 
     send_update(ifp, 1, dt, 0);
     record_resend(RESEND_UPDATE, dt, 0, NULL, NULL, resend_delay);
+}
+
+void
+send_unicast_update(struct neighbour *neigh, int urgent, const struct datum *dt)
+{
+    prepare_update(neigh->ifp, neigh, dt, NULL);
 }
 
 void

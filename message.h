@@ -69,6 +69,8 @@ void send_hello(struct interface *ifp);
 void flush_unicast(int dofree);
 void send_update(struct interface *ifp, int urgent, const struct datum *dt,
                  int op);
+void send_unicast_update(struct neighbour *neigh, int urgent,
+                         const struct datum *dt);
 void send_update_resend(struct interface *ifp, const struct datum *dt);
 void send_wildcard_retraction(struct interface *ifp);
 void update_myseqno(void);
