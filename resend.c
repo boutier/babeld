@@ -120,15 +120,20 @@ record_resend(int kind, const struct datum *dt, unsigned short seqno,
         if(kind == RESEND_UPDATE) {
             int neigh_num = 0;
             struct neighbour *neigh;
+            struct babel_route *route = find_installed_route(dt);
             FOR_ALL_NEIGHBOURS(neigh) {
                 neigh_num++;
             }
+            if(route)
+                neigh_num--;
             resend->neigh = malloc(neigh_num * sizeof(*resend->neigh));
             if(!resend->neigh) {
                 neigh_num = 0;
             } else {
                 resend->neigh_num = neigh_num;
                 FOR_ALL_NEIGHBOURS(neigh) {
+                    if(route && route->neigh == neigh)
+                        continue;
                     --neigh_num;
                     resend->neigh[neigh_num] = neigh;
                 }
