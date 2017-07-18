@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include "configuration.h"
 #include "local.h"
 #include "disambiguation.h"
+#include "bbierext.h" /*Added by Sandy Zhang*/
 
 struct babel_route **routes = NULL;
 static int route_slots = 0, max_route_slots = 0;
@@ -244,7 +245,11 @@ insert_route(struct babel_route *route)
 static void
 destroy_route(struct babel_route *route)
 {
-    free(route->channels);
+    /*Added by Sandy Zhang*/
+	bbier_del_bbier_route(route);
+	/*Added end*/
+
+	free(route->channels);
     free(route);
 }
 
@@ -491,6 +496,8 @@ install_route(struct babel_route *route)
 
     route->installed = 1;
     move_installed_route(route, i);
+
+    bbier_notify_route(route);
 
     local_notify_route(route, LOCAL_CHANGE);
 }
@@ -989,6 +996,7 @@ update_route(const unsigned char *id,
         local_notify_route(route, LOCAL_ADD);
         consider_route(route);
     }
+
     return route;
 }
 

@@ -1,7 +1,8 @@
 PREFIX = /usr/local
 MANDIR = $(PREFIX)/share/man
 
-CDEBUGFLAGS = -Os -g -Wall
+#CDEBUGFLAGS = -Os -g -Wall
+CDEBUGFLAGS = -O0 -g -Wall
 
 DEFINES = $(PLATFORM_DEFINES)
 
@@ -11,11 +12,11 @@ LDLIBS = -lrt
 
 SRCS = babeld.c net.c kernel.c util.c interface.c source.c neighbour.c \
        route.c xroute.c message.c resend.c configuration.c local.c \
-       disambiguation.c rule.c
+       disambiguation.c rule.c bbierext.c
 
 OBJS = babeld.o net.o kernel.o util.o interface.o source.o neighbour.o \
        route.o xroute.o message.o resend.o configuration.o local.o \
-       disambiguation.o rule.o
+       disambiguation.o rule.o bbierext.o
 
 babeld: $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o babeld $(OBJS) $(LDLIBS)

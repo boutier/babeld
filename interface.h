@@ -20,6 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+#ifndef INTERFACE_H_
+
 struct buffered_update {
     unsigned char id[8];
     unsigned char prefix[16];
@@ -143,3 +145,7 @@ void set_timeout(struct timeval *timeout, int msecs);
 int interface_up(struct interface *ifp, int up);
 int interface_ll_address(struct interface *ifp, const unsigned char *address);
 void check_interfaces(void);
+
+#define INTERFACE_H_
+
+#endif /* INTERFACE_H_ */

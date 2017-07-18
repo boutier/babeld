@@ -45,6 +45,10 @@ THE SOFTWARE.
 #define SUBTLV_TIMESTAMP 3 /* Used to compute RTT. */
 #define SUBTLV_SOURCE_PREFIX 250
 
+/*added by Sandy Zhang for Babel BIER extension*/
+#define SUBTLV_BABEL_BIER_INFO 20
+/*added end by Sandy Zhang*/
+
 extern unsigned short myseqno;
 extern struct timeval seqno_time;
 

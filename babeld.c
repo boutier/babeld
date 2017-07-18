@@ -54,12 +54,13 @@ THE SOFTWARE.
 #include "local.h"
 #include "rule.h"
 #include "version.h"
+#include "bbierext.h"
 
 struct timeval now;
 
 unsigned char myid[8];
 int have_id = 0;
-int debug = 0;
+int debug = 2;
 
 int link_detect = 0;
 int all_wireless = 0;
@@ -586,7 +587,7 @@ main(int argc, char **argv)
         send_wildcard_retraction(ifp);
         send_self_update(ifp);
         send_request(ifp, NULL, 0, NULL, 0);
-        flushupdates(ifp);
+      	flushupdates(ifp);
         flushbuf(ifp);
     }
 
@@ -792,6 +793,7 @@ main(int argc, char **argv)
             dump_tables(stdout);
             dumping = 0;
         }
+        bbier_initial();
     }
 
     debugf("Exiting...\n");

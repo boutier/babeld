@@ -40,6 +40,7 @@ THE SOFTWARE.
 #include "resend.h"
 #include "message.h"
 #include "configuration.h"
+#include "bbierext.h" /*Added by Sandy Zhang*/
 
 unsigned char packet_header[4] = {42, 2};
 
@@ -156,6 +157,8 @@ parse_update_subtlv(struct interface *ifp, int metric, int ae,
         if(i + len > alen)
             goto fail;
 
+        debugf("***********************parse_update_subtlv: type: %d, len: %d.\n", type, len);
+
         if(type == SUBTLV_PADN) {
             /* Nothing. */
         } else if(type == SUBTLV_DIVERSITY) {
@@ -172,7 +175,22 @@ parse_update_subtlv(struct interface *ifp, int metric, int ae,
                 goto fail;
             if(ae == 1)
                 (*src_plen) += 96;
-        } else {
+        }
+
+        /*Added by Sandy Zhang for BIER Babel Extension*/
+        else if (type == SUBTLV_BABEL_BIER_INFO)
+        {
+            int rtn;
+            debugf("***********************parse_update_subtlv: SUBTLV_BABEL_BIER_INFO.\n");
+            rtn = parse_bbier_info_subtlv(&a[i], ae, src_prefix);
+            if (rtn < 0) {
+        	    debugf("Execute Error: SUBTLV_BABEL_BIER_INFO.\n");
+        	    goto fail;
+            }
+        }
+        /*Added end by Sandy Zhang*/
+
+        else {
             debugf("Received unknown%s Update sub-TLV %d.\n",
                    (type & 0x80) != 0 ? " mandatory" : "", type);
             if((type & 0x80) != 0)
@@ -184,6 +202,11 @@ parse_update_subtlv(struct interface *ifp, int metric, int ae,
     *channels_len_return = channels_len;
     return 1;
  fail:
+    /*if (bbier)
+    {
+        clear_bbier_info(bbier);
+        bbier = NULL;
+    }*/
     fprintf(stderr, "Received truncated sub-TLV on Update.\n");
     return -1;
 }
@@ -630,6 +653,7 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             int channels_len = MAX_CHANNEL_HOPS;
             unsigned short interval, seqno, metric;
             int rc, parsed_len, is_ss;
+
             if(len < 10) {
                 if(len < 2 || message[3] & 0x80)
                     have_v4_prefix = have_v6_prefix = 0;
@@ -713,9 +737,9 @@ parse_packet(const unsigned char *from, struct interface *ifp,
             }
 
             rc = parse_update_subtlv(ifp, metric, message[2],
-                                     message + 2 + parsed_len,
-                                     len - parsed_len, channels, &channels_len,
-                                     src_prefix, &src_plen);
+                                                 message + 2 + parsed_len,
+                                                 len - parsed_len, channels, &channels_len,
+                                                 src_prefix, &src_plen);
             if(rc < 0)
                 goto done;
             is_ss = !is_default(src_prefix, src_plen);
@@ -1014,7 +1038,9 @@ start_message(struct interface *ifp, int type, int len)
 static void
 end_message(struct interface *ifp, int type, int bytes)
 {
-    assert(ifp->buffered >= bytes + 2 &&
+    /*debugf("===============end_message, ifp: 0x%x, ifp->buffered: %d, type: %d, bytes: %d\n", ifp, ifp->buffered, type, bytes);*/
+
+	assert(ifp->buffered >= bytes + 2 &&
            ifp->sendbuf[ifp->buffered - bytes - 2] == type &&
            ifp->sendbuf[ifp->buffered - bytes - 1] == bytes);
     schedule_flush(ifp);
@@ -1229,6 +1255,7 @@ really_send_update(struct interface *ifp,
     unsigned short flags = 0;
     int channels_size;
     int is_ss = !is_default(src_prefix, src_plen);
+    int bbier_len = 0, last_len = 0;
 
     if(diversity_kind != DIVERSITY_CHANNEL)
         channels_len = -1;
@@ -1245,7 +1272,8 @@ really_send_update(struct interface *ifp,
 
     metric = MIN(metric + add_metric, INFINITY);
     /* Worst case */
-    ensure_space(ifp, 20 + 12 + 28 + 18);
+    /*ensure_space(ifp, 20 + 12 + 28 + 18);*/
+    ensure_space(ifp, 20 + 12 + 28 + 18 + 120);/*Modified by Sandy Zhang, suppose that 10 edge nodes*/
 
     v4 = plen >= 96 && v4mapped(prefix);
 
@@ -1318,8 +1346,18 @@ really_send_update(struct interface *ifp,
         accumulate_byte(ifp, channels_len);
         accumulate_bytes(ifp, channels, channels_len);
     }
+
+    /*added by Sandy Zhang for BIRE babel extension*/
+    debugf("=====================bbier_call_fillin before ifp->buffered %d\n", ifp->buffered);
+    bbier_len = bbier_call_fillin( &(ifp->sendbuf[ifp->buffered]), real_prefix, real_plen);
+    ifp->buffered += bbier_len;
+    last_len = 10 + (real_plen + 7) / 8 - omit +
+            src_tlv_size + channels_size + bbier_len;
+    ifp->sendbuf[ifp->buffered - last_len - 1] += bbier_len;
+    debugf("=====================bbier_call_fillin after len: %d, ifp->buffered: %d, last_len %d\n", bbier_len, ifp->buffered, last_len);
+
     end_message(ifp, MESSAGE_UPDATE, 10 + (real_plen + 7) / 8 - omit +
-                src_tlv_size + channels_size);
+                    src_tlv_size + channels_size + bbier_len);
 
     if(flags & 0x80) {
         memcpy(ifp->buffered_prefix, prefix, 16);

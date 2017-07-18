@@ -1169,7 +1169,7 @@ print_kernel_route(int add, int protocol, int type,
                 "if: %s (proto: %d, type: %d)",
                 add == RTM_NEWROUTE ? "Add" : "Delete",
                 addr_prefix, route->plen, addr_gw, route->metric,
-                src_addr_prefix, route->src_plen
+                src_addr_prefix, route->src_plen,
                 ifname, protocol, type);
         return;
     }
